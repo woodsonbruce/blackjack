@@ -142,8 +142,13 @@ class Hand:
         """
         return (
             any(map(lambda x: x.is_ace(), self.cards))
-            and sum([c.value.value if c.value.value not in (10, 11, 12, 13) else 10
-                for c in self.cards]) <= 11
+            and sum(
+                [
+                    c.value.value if c.value.value not in (10, 11, 12, 13) else 10
+                    for c in self.cards
+                ]
+            )
+            <= 11
         )
 
     def is_bust(self):
@@ -167,10 +172,19 @@ class Hand:
         count aces high unless it busts the hand
         """
         # get initial value with aces counted low
-        value = sum([c.value.value if c.value.value not in (10, 11, 12, 13) else 10 for c in self.cards])
+        value = sum(
+            [
+                c.value.value if c.value.value not in (10, 11, 12, 13) else 10
+                for c in self.cards
+            ]
+        )
 
         # if there are aces, count one as high
-        return value + 10 if value <= 11 and CardValue.ACE in tuple(c.value for c in self.cards) else value
+        return (
+            value + 10
+            if value <= 11 and CardValue.ACE in tuple(c.value for c in self.cards)
+            else value
+        )
 
 
 class DealerHand(Hand):
@@ -196,6 +210,7 @@ class DealerHand(Hand):
                 if self.get_sum() < 17:
                     True
             return False
+
 
 class PlayerHand(Hand):
     """
@@ -349,19 +364,19 @@ class Game:
 
     def process_round(self):
         """
-        top level round processor
+        process a round
         """
-        # deal hands
+        # create dealer hand
         dealer_hand = DealerHand(self.shoe.deal_cards(2))
 
+        # create player hands
         for spot in self.spots:
             spot.hands.append(
                 PlayerHand(self.shoe.deal_cards(2), spot.player.get_bet_amount())
             )
 
-        # handle insurance
+        # handle insurance bets
         if dealer_hand.cards[1].is_ace():
-
             for spot in self.spots:
                 if spot.player.takes_insurance:
                     if dealer_hand.cards[0].is_paint():
@@ -369,9 +384,8 @@ class Game:
                     else:
                         spot.player.lose(0.5 * spot.hands[0].bet)
 
-        # handle dealer blackjack
+        # handle dealer blackjack case
         if dealer_hand.is_bj():
-
             for spot in self.spots:
                 if not spot.hands[0].is_bj():
                     spot.player.lose(spot.hands[0].bet)
@@ -380,11 +394,12 @@ class Game:
         # handle player blackjacks
         for spot in self.spots:
             if spot.hands[0].is_bj():
-                spot.player.win(1.5 * spot.player.get_bet_amount())
+                spot.player.win(1.5 * spot.hands[0].bet)
+                spot.hands = []
 
         # handle player hands by spot position
         for spot in self.spots:
-            if not spot.hands[0].is_bj():
+            if spot.hands:
                 self.process_spot(spot, dealer_hand.cards[1])
 
         # handle dealer hand
