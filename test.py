@@ -1,6 +1,7 @@
 """
 tests for blackjack program
 """
+
 from blackjack import *
 
 
@@ -10,11 +11,13 @@ def test_hand_is_bj():
     hand = Hand([ace_clubs, ten_diamonds])
     assert hand.is_bj()
 
+
 def test_hand_is_not_bj():
     ace_clubs = Card(CardValue.ACE, CardSuit.CLUBS)
     ace_diamonds = Card(CardValue.ACE, CardSuit.DIAMONDS)
     hand = Hand([ace_clubs, ace_diamonds])
     assert not hand.is_bj()
+
 
 def test_hand_is_soft():
     ace_clubs = Card(CardValue.ACE, CardSuit.CLUBS)
@@ -22,18 +25,21 @@ def test_hand_is_soft():
     hand = Hand([ace_clubs, ten_diamonds])
     assert hand.is_soft()
 
+
 def test_hand_is_not_soft():
     nine_clubs = Card(CardValue.NINE, CardSuit.CLUBS)
     ten_diamonds = Card(CardValue.TEN, CardSuit.DIAMONDS)
     hand = Hand([nine_clubs, ten_diamonds])
     assert not hand.is_soft()
 
+
 def test_hand_with_aces_is_not_soft():
     nine_clubs = Card(CardValue.NINE, CardSuit.CLUBS)
-    ten_diamonds = Card(CardValue.TEN, CardSuit.DIAMONDS)    
+    ten_diamonds = Card(CardValue.TEN, CardSuit.DIAMONDS)
     ace_diamonds = Card(CardValue.ACE, CardSuit.DIAMONDS)
     hand = Hand([nine_clubs, ten_diamonds, ace_diamonds])
     assert not hand.is_soft()
+
 
 def test_hand_is_bust():
     five_clubs = Card(CardValue.FIVE, CardSuit.CLUBS)
@@ -42,11 +48,13 @@ def test_hand_is_bust():
     hand = Hand([five_clubs, ten_diamonds, seven_hearts])
     assert hand.is_bust()
 
+
 def test_hand_is_not_bust():
     ace_clubs = Card(CardValue.ACE, CardSuit.CLUBS)
     ten_diamonds = Card(CardValue.TEN, CardSuit.DIAMONDS)
     hand = Hand([ace_clubs, ten_diamonds])
     assert not hand.is_bust()
+
 
 def test_soft_hand_is_not_bust():
     """
@@ -58,28 +66,44 @@ def test_soft_hand_is_not_bust():
     ace_hearts = Card(CardValue.ACE, CardSuit.HEARTS)
     ace_spades = Card(CardValue.ACE, CardSuit.SPADES)
 
-    hand = Hand([
-        ace_clubs,
-        ace_clubs,
-        ace_clubs,
-        ace_clubs,
-        ace_clubs,
-        ace_clubs,
-        ace_diamonds,
-        ace_diamonds,
-        ace_diamonds,
-        ace_diamonds,
-        ace_diamonds,
-        ace_diamonds,
-        ace_hearts,
-        ace_hearts,
-        ace_hearts,
-        ace_hearts,
-        ace_hearts,
-        ace_hearts,
-        ace_spades,
-        ace_spades,
-        ace_spades,
-        ])
+    hand = Hand(
+        [
+            ace_clubs,
+            ace_clubs,
+            ace_clubs,
+            ace_clubs,
+            ace_clubs,
+            ace_clubs,
+            ace_diamonds,
+            ace_diamonds,
+            ace_diamonds,
+            ace_diamonds,
+            ace_diamonds,
+            ace_diamonds,
+            ace_hearts,
+            ace_hearts,
+            ace_hearts,
+            ace_hearts,
+            ace_hearts,
+            ace_hearts,
+            ace_spades,
+            ace_spades,
+            ace_spades,
+        ]
+    )
 
     assert not hand.is_bust()
+
+
+def test_player_hand_is_pair():
+    ace_clubs = Card(CardValue.ACE, CardSuit.CLUBS)
+    ace_diamonds = Card(CardValue.ACE, CardSuit.DIAMONDS)
+    player_hand = PlayerHand([ace_clubs, ace_diamonds], bet=200)
+    assert player_hand.is_pair()
+
+
+def test_player_hand_is_not_pair():
+    ace_clubs = Card(CardValue.ACE, CardSuit.CLUBS)
+    ten_clubs = Card(CardValue.TEN, CardSuit.CLUBS)
+    player_hand = PlayerHand([ace_clubs, ten_clubs], bet=200)
+    assert not player_hand.is_pair()
