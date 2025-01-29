@@ -236,13 +236,13 @@ class Player:
     represents a player
     """
 
-    def __init__(self, takes_insurance=False):
+    def __init__(self, player_id, takes_insurance=False):
         self.takes_insurance = takes_insurance
         self.money = 10000
+        self.id = player_id
 
-        # to delete
-        self.hands = []
-        self.stayed_hands = []
+    def __str__(self):
+        return f"Player<{self.id}>"
 
     def get_bet_amount(self):
         return 100
@@ -389,6 +389,7 @@ class Game:
             for spot in self.spots:
                 if not spot.hands[0].is_bj():
                     spot.player.lose(spot.hands[0].bet)
+                spot.hands = []
             return
 
         # handle player blackjacks
@@ -432,12 +433,12 @@ class Game:
 
 
 # create two players
-a = Player(takes_insurance=True)
-b = Player(takes_insurance=False)
+a = Player("John", takes_insurance=True)
+b = Player("Katy", takes_insurance=False)
 
 # play all rounds in the shoe
 for _ in range(10):
     print("---")
     shoe = Shoe(6)
-    g = Game(shoe, player_spot_data=[(a, 4), (b, 3)])
+    g = Game(shoe, player_spot_data=[(a, 1), (b, 3)])
     g.run()
