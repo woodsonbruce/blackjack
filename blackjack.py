@@ -135,7 +135,11 @@ class Hand:
         return f"Hand<{ [c for c in self.cards] }>"
 
     def is_soft(self):
-        return any(map(lambda x: x.is_ace(), self.cards))
+        """
+        a soft hand has at least one ace and at least one ace must be interpretable as both 1 and 11, so it will not bust.  this is
+        true for at least one ace when the hand total interpretting aces as 1 is less than or equal to 11.
+        """
+        return any(map(lambda x: x.is_ace(), self.cards)) and sum([c.value.value for c in self.cards]) <= 11
 
     def is_bust(self):
         return (
