@@ -250,7 +250,7 @@ class Game:
         total_spots_required = sum([_[1] for _ in player_spot_data])
         if total_spots_required > MAX_TABLE_SPOTS:
             raise TooManyPlayersException(
-                f"{total_spots_required} spots needed but table has {TABLE_SPOTS}"
+                f"{total_spots_required} spots needed but table has {MAX_TABLE_SPOTS}"
             )
 
         # set shoe
@@ -383,5 +383,5 @@ a = Player(takes_insurance=True)
 b = Player(takes_insurance=False)
 
 # play all rounds in the shoe
-g = Game(shoe, player_spot_data=[(a, 1), (b, 3)])
+g = Game(shoe, player_spot_data=[(a, 10), (b, 3)])
 g.run()
