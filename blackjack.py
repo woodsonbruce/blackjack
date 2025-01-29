@@ -12,6 +12,7 @@ import random
 CARDS_PER_DECK = 52
 MAX_RESPLIT = 4
 MAX_TABLE_SPOTS = 7
+DEALER_HITS_SOFT_17 = False
 
 
 class CardValue(Enum):
@@ -141,7 +142,8 @@ class Hand:
         """
         return (
             any(map(lambda x: x.is_ace(), self.cards))
-            and sum([c.value.value for c in self.cards]) <= 11
+            and sum([c.value.value if c.value.value not in (10, 11, 12, 13) else 10
+                for c in self.cards]) <= 11
         )
 
     def is_bust(self):
@@ -160,6 +162,16 @@ class Hand:
             self.cards[0].is_paint() and self.cards[1].is_ace()
         )
 
+    def get_sum(self):
+        """
+        count aces high unless it busts the hand
+        """
+        # get initial value with aces counted low
+        value = sum([c.value.value if c.value.value not in (10, 11, 12, 13) else 10 for c in self.cards])
+
+        # if there are aces, count one as high
+        return value + 10 if value <= 11 and CardValue.ACE in tuple(c.value for c in self.cards) else value
+
 
 class DealerHand(Hand):
     """
@@ -169,6 +181,21 @@ class DealerHand(Hand):
     def __init__(self, cards):
         super().__init__(cards)
 
+    def dealer_hits(self):
+
+        if not self.is_soft():
+            if self.get_sum() < 17:
+                return True
+            else:
+                return False
+        else:
+            if DEALER_HITS_SOFT_17:
+                if self.get_sum() < 18:
+                    return True
+            else:
+                if self.get_sum() < 17:
+                    True
+            return False
 
 class PlayerHand(Hand):
     """
@@ -361,8 +388,22 @@ class Game:
                 self.process_spot(spot, dealer_hand.cards[1])
 
         # handle dealer hand
+        while dealer_hand.dealer_hits():
+            hit_card = self.shoe.deal_cards(1)
+            dealer_hand.cards += hit_card
 
         # payoff stayed hands or take bets
+        if dealer_hand.is_bust():
+            for spot in self.spots:
+                for hand in spot.hands:
+                    spot.player.win(hand.bet)
+        else:
+            for spot in self.spots:
+                for hand in spot.hands:
+                    if hand.get_sum() > dealer_hand.get_sum():
+                        spot.player.win(hand.bet)
+                    elif hand.get_sum() < dealer_hand.get_sum():
+                        spot.player.lose(hand.bet)
 
         # clear
         for spot in self.spots:
@@ -375,13 +416,13 @@ class Game:
             print(i, agent.money)
 
 
-# create 6-deck shoe
-shoe = Shoe(6)
-
 # create two players
 a = Player(takes_insurance=True)
 b = Player(takes_insurance=False)
 
 # play all rounds in the shoe
-g = Game(shoe, player_spot_data=[(a, 10), (b, 3)])
-g.run()
+for _ in range(10):
+    print("---")
+    shoe = Shoe(6)
+    g = Game(shoe, player_spot_data=[(a, 4), (b, 3)])
+    g.run()
