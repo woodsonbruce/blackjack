@@ -185,9 +185,6 @@ class PlayerHand(Hand):
     def is_pair(self):
         return self.cards[0].value is self.cards[1].value
 
-    def is_soft(self):
-        return any(map(lambda x: x.is_ace(), self.cards))
-
 
 class Player:
     """
