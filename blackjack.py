@@ -1,6 +1,5 @@
 """
-blackjack things for rl
-- maximum resulting hands from splitting is MAX_RESPLIT + 1
+blackjack simulation
 - resplit aces and insurance allowed
 - double on any pair
 """
@@ -11,7 +10,8 @@ import random
 
 
 CARDS_PER_DECK = 52
-MAX_RESPLIT = 3
+MAX_RESPLIT = 4
+MAX_TABLE_SPOTS = 7
 
 
 class CardValue(Enum):
@@ -139,7 +139,10 @@ class Hand:
         a soft hand has at least one ace and at least one ace must be interpretable as both 1 and 11, so it will not bust.  this is
         true for at least one ace when the hand total interpretting aces as 1 is less than or equal to 11.
         """
-        return any(map(lambda x: x.is_ace(), self.cards)) and sum([c.value.value for c in self.cards]) <= 11
+        return (
+            any(map(lambda x: x.is_ace(), self.cards))
+            and sum([c.value.value for c in self.cards]) <= 11
+        )
 
     def is_bust(self):
         return (
@@ -194,6 +197,8 @@ class Player:
     def __init__(self, takes_insurance=False):
         self.takes_insurance = takes_insurance
         self.money = 10000
+
+        # to delete
         self.hands = []
         self.stayed_hands = []
 
@@ -216,62 +221,104 @@ class Player:
         return True if random.random() < 0.5 else False
 
 
+class Spot:
+    """
+    represents a spot at the table
+    - takes one hand and one bet
+    - controlled by a player
+    - player can control more than one adjacent spots
+    """
+
+    def __init__(self, table_position):
+        self.table_position = table_position
+        self.player = None
+        self.hands = []
+
+
+class TooManyPlayersException(Exception):
+    pass
+
+
 class Game:
     """
     represents a shoe of game play
     """
 
-    def __init__(self, shoe, players):
+    def __init__(self, shoe, player_spot_data):
+
+        # ensure all players can play specified hands
+        total_spots_required = sum([_[1] for _ in player_spot_data])
+        if total_spots_required > MAX_TABLE_SPOTS:
+            raise TooManyPlayersException(
+                f"{total_spots_required} spots needed but table has {TABLE_SPOTS}"
+            )
+
+        # set shoe
         self.shoe = shoe
-        self.players = players
 
-    def process_post_split(self, hand, dealer_card, player_id):
-        """
-        double and hit processing
-        - put in container player.stayed_hands if not broken
-        - lose function if broken
-        """
-        # player
-        player = self.players[player_id]
+        # create spots
+        self.spots = []
+        for i in range(total_spots_required):
+            self.spots.append(Spot(i))
 
-        # double
-        if player.doubles(hand, dealer_card):
-            hand.bet = 2 * hand.bet
-            double_card = self.shoe.deal_cards(1)
-            hand.cards += double_card
+        # set player data
+        self.number_players = len(player_spot_data)
+        self.players = [_[0] for _ in player_spot_data]
+        # assign players to spots
+        next_spot_index = 0
+        for datum in player_spot_data:
+            for _ in range(datum[1]):
+                self.spots[next_spot_index].player = datum[0]
+                next_spot_index += 1
+
+    def process_double_downs(self, dealer_card, spot):
+        index_busted = []  # some players double twelve
+        for i, hand in enumerate(spot.hands):
+            if spot.player.doubles(hand, dealer_card):
+                hand.bet = 2 * hand.bet
+                double_card = self.shoe.deal_cards(1)
+                hand.cards += double_card
             if hand.is_bust():
-                player.lose(hand.bet)
+                index_busted.append(i)
+                spot.player.lose(hand.bet)
             else:
                 hand.is_doubled = True
-                player.stayed_hands.append(hand)
-            return
+        for i in sorted(index_busted, reverse=True):
+            del spot.hands[i]
 
-        # hit or stay in while loop
-        while not hand.is_bust() and player.hits(hand, dealer_card):
-            hit_card = self.shoe.deal_cards(1)
-            hand.cards += hit_card
-            if hand.is_bust():
-                player.lose(hand.bet)
-                return
+    def process_hit_stand(self, dealer_card, spot):
+        index_busted = []
+        for i, hand in enumerate(spot.hands):
+            if not hand.is_doubled:
+                while not hand.is_bust() and spot.player.hits(hand, dealer_card):
+                    hit_card = self.shoe.deal_cards(1)
+                    hand.cards += hit_card
+                    if hand.is_bust():
+                        index_busted.append(i)
+                        spot.player.lose(hand.bet)
+        for i in sorted(index_busted, reverse=True):
+            del spot.hands[i]
 
-        # lose or put in container
-        player.stayed_hands.append(hand)
-
-    def process_hand(self, hand, dealer_card, player_id, total_splits):
+    def process_splitting(self, hand, dealer_card, spot):
         """
-        top level hand processor
-        - uses recursion to handle splitting
+        use recursion to handle splitting
         """
-        player = self.players[player_id]
-        if hand.is_pair() and player.splits(hand, dealer_card):
-            if total_splits < MAX_RESPLIT:
-                h1, h2 = hand.split(self.shoe.deal_cards(2))
-                self.process_hand(h1, dealer_card, player_id, total_splits + 1)
-                self.process_hand(h2, dealer_card, player_id, total_splits + 1)
-            else:
-                self.process_post_split(hand, dealer_card, player_id)
-        else:
-            self.process_post_split(hand, dealer_card, player_id)
+        if (
+            hand.is_pair()
+            and spot.player.splits(hand, dealer_card)
+            and len(spot.hands) < MAX_RESPLIT
+        ):
+            h1, h2 = hand.split(self.shoe.deal_cards(2))
+            spot.hands.remove(hand)
+            spot.hands.append(h1)
+            spot.hands.append(h2)
+            self.process_splitting(h1, dealer_card, spot)
+            self.process_splitting(h2, dealer_card, spot)
+
+    def process_spot(self, spot, dealer_card):
+        self.process_splitting(spot.hands[0], dealer_card, spot)
+        self.process_double_downs(dealer_card, spot)
+        self.process_hit_stand(dealer_card, spot)
 
     def process_round(self):
         """
@@ -279,49 +326,47 @@ class Game:
         """
         # deal hands
         dealer_hand = DealerHand(self.shoe.deal_cards(2))
-        for player in self.players:
-            player.hands.append(
-                PlayerHand(self.shoe.deal_cards(2), player.get_bet_amount())
+
+        for spot in self.spots:
+            spot.hands.append(
+                PlayerHand(self.shoe.deal_cards(2), spot.player.get_bet_amount())
             )
 
         # handle insurance
         if dealer_hand.cards[1].is_ace():
-            for player in self.players:
-                if player.takes_insurance:
-                    for hand in player.hands:
-                        if dealer_hand.cards[0].is_paint():
-                            player.win(hand.bet)
-                        else:
-                            player.lose(0.5 * hand.bet)
+
+            for spot in self.spots:
+                if spot.player.takes_insurance:
+                    if dealer_hand.cards[0].is_paint():
+                        spot.player.win(spot.hands[0].bet)
+                    else:
+                        spot.player.lose(0.5 * spot.hands[0].bet)
 
         # handle dealer blackjack
         if dealer_hand.is_bj():
-            for player in self.players:
-                for hand in player.hands:
-                    if not hand.is_bj():
-                        player.lose(hand.bet)
+
+            for spot in self.spots:
+                if not spot.hands[0].is_bj():
+                    spot.player.lose(spot.hands[0].bet)
             return
 
         # handle player blackjacks
-        for player in self.players:
-            for hand in player.hands:
-                if hand.is_bj():
-                    player.win(1.5 * player.get_bet_amount())
+        for spot in self.spots:
+            if spot.hands[0].is_bj():
+                spot.player.win(1.5 * spot.player.get_bet_amount())
 
-        # handle player hands
-        for i, player in enumerate(self.players):
-            for hand in player.hands:
-                if not hand.is_bj():
-                    self.process_hand(hand, dealer_hand.cards[1], i, 0)
+        # handle player hands by spot position
+        for spot in self.spots:
+            if not spot.hands[0].is_bj():
+                self.process_spot(spot, dealer_hand.cards[1])
 
         # handle dealer hand
 
         # payoff stayed hands or take bets
 
         # clear
-        for player in self.players:
-            player.hands = []
-            player.stayed_hands = []
+        for spot in self.spots:
+            spot.hands = []
 
     def run(self):
         while not self.shoe.cut_card_out:
@@ -338,5 +383,5 @@ a = Player(takes_insurance=True)
 b = Player(takes_insurance=False)
 
 # play all rounds in the shoe
-g = Game(shoe, [a, b])
+g = Game(shoe, player_spot_data=[(a, 1), (b, 3)])
 g.run()
