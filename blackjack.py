@@ -75,18 +75,13 @@ class Card:
         """
         whether a card is a ten, jack, queen, or king
         """
-        return (
-            True
-            if self.value
-            in (CardValue.TEN, CardValue.JACK, CardValue.QUEEN, CardValue.KING)
-            else False
-        )
+        return self.value in (CardValue.TEN, CardValue.JACK, CardValue.QUEEN, CardValue.KING)
 
     def is_ace(self):
         """
         whether a card is an ace
         """
-        return True if self.value is CardValue.ACE else False
+        return self.value is CardValue.ACE
 
 
 class Deck:
@@ -156,12 +151,11 @@ class Hand:
         """
         describes a shoe
         """
-        return f"Hand<{ [c for c in self.cards] }>"
+        return f"Hand<{self.cards}>"
 
     def is_soft(self):
         """
-        a soft hand has at least one ace and at least one ace must be interpretable as both 1 and 11, so it will not bust.  this is
-        true for at least one ace when the hand total interpretting aces as 1 is less than or equal to 11.
+        whether a hand is soft or not
         """
         return (
             any(map(lambda x: x.is_ace(), self.cards))
@@ -232,18 +226,10 @@ class DealerHand(Hand):
         whether a dealer hits a hand
         """
         if not self.is_soft():
-            if self.get_sum() < 17:
-                return True
-            else:
-                return False
-        else:
-            if DEALER_HITS_SOFT_17:
-                if self.get_sum() < 18:
-                    return True
-            else:
-                if self.get_sum() < 17:
-                    True
-            return False
+            return self.get_sum() < 17
+        if DEALER_HITS_SOFT_17:
+            return self.get_sum() < 18
+        return self.get_sum() < 17
 
 
 class PlayerHand(Hand):
@@ -315,19 +301,19 @@ class Player:
         """
         whether a player splits a hand
         """
-        return True if random.random() < 0.5 else False
+        return random.random() < 0.5
 
     def doubles(self, player_hand, dealer_card):
         """
         whether a player doubles a hand
         """
-        return True if random.random() < 0.5 else False
+        return random.random() < 0.5
 
     def hits(self, player_hand, dealer_card):
         """
         whether a player hits a hand
         """
-        return True if random.random() < 0.5 else False
+        return random.random() < 0.5
 
 
 class Spot:
@@ -351,9 +337,6 @@ class TooManyPlayersException(Exception):
     """
     exception class for insufficient player spots
     """
-
-    pass
-
 
 class Game:
     """
@@ -417,7 +400,6 @@ class Game:
             if not hand.is_doubled:
                 while not hand.is_bust() and spot.player.hits(hand, dealer_card):
                     hit_card = self.shoe.deal_cards(1)
-                    print(f"hit card: {hit_card}")
                     hand.cards += hit_card
                     if hand.is_bust():
                         index_busted.append(i)
@@ -461,11 +443,6 @@ class Game:
             spot.hands.append(
                 PlayerHand(self.shoe.deal_cards(2), spot.player.get_bet_amount())
             )
-
-        print(f"starting round")
-        print(f"dealer: {dealer_hand}")
-        for spot in self.spots:
-            print(f"player: {spot.player}, hand: {spot.hands[0]}")
 
         # handle insurance bets
         if dealer_hand.cards[1].is_ace():
@@ -518,6 +495,9 @@ class Game:
             spot.hands = []
 
     def run(self):
+        """
+        play all rounds in the shoe
+        """
         while not self.shoe.cut_card_out:
             self.process_round()
         for player in self.players:
@@ -531,6 +511,6 @@ b = Player("Katy", takes_insurance=False)
 # play all rounds in the shoe
 for _ in range(10):
     print("---")
-    shoe = Shoe(6)
-    g = Game(shoe, player_spot_data=[(a, 1), (b, 3)])
+    six_deck_shoe = Shoe(6)
+    g = Game(six_deck_shoe, player_spot_data=[(a, 1), (b, 3)])
     g.run()
