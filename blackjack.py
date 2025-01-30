@@ -9,6 +9,7 @@ from enum import Enum
 import random
 
 
+# game constants
 CARDS_PER_DECK = 52
 MAX_RESPLIT = 4
 MAX_TABLE_SPOTS = 7
@@ -52,19 +53,28 @@ class Card:
     """
 
     def __init__(self, value, suit):
+        """
+        constructs a card
+        """
         self.value = value
         self.suit = suit
 
     def __repr__(self):
+        """
+        describes card
+        """
         return f"{self.value.value}{self.suit.name[0]}"
 
-    def __str__(self):
-        return f"{self.value.value}{self.suit.name[0]}"
-
-    def describe(self):
+    def as_text(self):
+        """
+        get lengthy description, eg 'ten of diamonds'
+        """
         return f"{self.value.name.lower().capitalize()} of {self.suit.name.lower().capitalize()}"
 
     def is_paint(self):
+        """
+        whether a card is a ten, jack, queen, or king
+        """
         return (
             True
             if self.value
@@ -73,6 +83,9 @@ class Card:
         )
 
     def is_ace(self):
+        """
+        whether a card is an ace
+        """
         return True if self.value is CardValue.ACE else False
 
 
@@ -82,6 +95,9 @@ class Deck:
     """
 
     def __init__(self):
+        """
+        constructs a deck
+        """
         self.cards = deque()
         for suit in CardSuit:
             for value in CardValue:
@@ -92,11 +108,12 @@ class Deck:
 class Shoe:
     """
     represents a blackjack shoe
-    - decks: number of decks
-    - cut_card_pos: number of cards behind the cut card
     """
 
     def __init__(self, decks, cut_card_pos=2 * CARDS_PER_DECK):
+        """
+        constructs a shoe
+        """
         self.decks = decks
         self.cards = deque()
         self.cut_card_pos = cut_card_pos
@@ -113,6 +130,9 @@ class Shoe:
         self.deal_cards(1)
 
     def deal_cards(self, number):
+        """
+        deal specified number of cards out of the front
+        """
         cards = []
         if len(self.cards) - number <= self.cut_card_pos:
             self.cut_card_out = True
@@ -127,12 +147,15 @@ class Hand:
     """
 
     def __init__(self, cards):
+        """
+        constructs base-class components of a hand
+        """
         self.cards = cards
 
-    def __str__(self):
-        return f"Hand<{ [c for c in self.cards] }>"
-
     def __repr__(self):
+        """
+        describes a shoe
+        """
         return f"Hand<{ [c for c in self.cards] }>"
 
     def is_soft(self):
@@ -152,6 +175,9 @@ class Hand:
         )
 
     def is_bust(self):
+        """
+        whether the hand is above 21 with every ace counted low
+        """
         return (
             sum(
                 [
@@ -163,6 +189,9 @@ class Hand:
         )
 
     def is_bj(self):
+        """
+        whether the hand is a blackjack
+        """
         return (self.cards[0].is_ace() and self.cards[1].is_paint()) or (
             self.cards[0].is_paint() and self.cards[1].is_ace()
         )
@@ -193,10 +222,15 @@ class DealerHand(Hand):
     """
 
     def __init__(self, cards):
+        """
+        constructs a dealer's hand
+        """
         super().__init__(cards)
 
     def dealer_hits(self):
-
+        """
+        whether a dealer hits a hand
+        """
         if not self.is_soft():
             if self.get_sum() < 17:
                 return True
@@ -218,16 +252,25 @@ class PlayerHand(Hand):
     """
 
     def __init__(self, cards, bet):
+        """
+        constructs a player's hand
+        """
         super().__init__(cards)
         self.bet = bet
         self.is_doubled = False
 
     def split(self, new_cards):
+        """
+        splits a hand
+        """
         h1 = PlayerHand([self.cards[0], new_cards[0]], self.bet)
         h2 = PlayerHand([self.cards[1], new_cards[1]], self.bet)
         return h1, h2
 
     def is_pair(self):
+        """
+        whether a hand is a pair
+        """
         return self.cards[0].value is self.cards[1].value
 
 
@@ -237,47 +280,78 @@ class Player:
     """
 
     def __init__(self, player_id, takes_insurance=False):
+        """
+        constructs a player
+        """
         self.takes_insurance = takes_insurance
         self.money = 10000
         self.id = player_id
 
-    def __str__(self):
+    def __repr__(self):
+        """
+        describes a player
+        """
         return f"Player<{self.id}>"
 
     def get_bet_amount(self):
+        """
+        get the amount the player wants to bet
+        """
         return 100
 
     def lose(self, amt):
+        """
+        player loses a bet
+        """
         self.money -= amt
 
     def win(self, amt):
+        """
+        player wins a bet
+        """
         self.money += amt
 
     def splits(self, player_hand, dealer_card):
+        """
+        whether a player splits a hand
+        """
         return True if random.random() < 0.5 else False
 
     def doubles(self, player_hand, dealer_card):
+        """
+        whether a player doubles a hand
+        """
         return True if random.random() < 0.5 else False
 
     def hits(self, player_hand, dealer_card):
+        """
+        whether a player hits a hand
+        """
         return True if random.random() < 0.5 else False
 
 
 class Spot:
     """
     represents a spot at the table
-    - takes one hand and one bet
-    - controlled by a player
-    - player can control more than one adjacent spots
+    - insurance bets are per spot
+    - has a single hand and a single bet initially but hands may split and/or be doubled
+    - player can play multiple spots
     """
 
     def __init__(self, table_position):
+        """
+        constructs a spot
+        """
         self.table_position = table_position
         self.player = None
         self.hands = []
 
 
 class TooManyPlayersException(Exception):
+    """
+    exception class for insufficient player spots
+    """
+
     pass
 
 
@@ -287,6 +361,9 @@ class Game:
     """
 
     def __init__(self, shoe, player_spot_data):
+        """
+        constructs a game
+        """
 
         # ensure all players can play specified hands
         total_spots_required = sum([_[1] for _ in player_spot_data])
@@ -306,6 +383,7 @@ class Game:
         # set player data
         self.number_players = len(player_spot_data)
         self.players = [_[0] for _ in player_spot_data]
+
         # assign players to spots
         next_spot_index = 0
         for datum in player_spot_data:
@@ -313,27 +391,33 @@ class Game:
                 self.spots[next_spot_index].player = datum[0]
                 next_spot_index += 1
 
-    def process_double_downs(self, dealer_card, spot):
+    def __process_double_downs(self, dealer_card, spot):
+        """
+        handles doubling down
+        """
         index_busted = []  # some players double twelve
         for i, hand in enumerate(spot.hands):
             if spot.player.doubles(hand, dealer_card):
                 hand.bet = 2 * hand.bet
                 double_card = self.shoe.deal_cards(1)
                 hand.cards += double_card
+                hand.is_doubled = True
             if hand.is_bust():
                 index_busted.append(i)
                 spot.player.lose(hand.bet)
-            else:
-                hand.is_doubled = True
         for i in sorted(index_busted, reverse=True):
             del spot.hands[i]
 
-    def process_hit_stand(self, dealer_card, spot):
+    def __process_hit_stand(self, dealer_card, spot):
+        """
+        handles hitting or standing
+        """
         index_busted = []
         for i, hand in enumerate(spot.hands):
             if not hand.is_doubled:
                 while not hand.is_bust() and spot.player.hits(hand, dealer_card):
                     hit_card = self.shoe.deal_cards(1)
+                    print(f"hit card: {hit_card}")
                     hand.cards += hit_card
                     if hand.is_bust():
                         index_busted.append(i)
@@ -341,7 +425,7 @@ class Game:
         for i in sorted(index_busted, reverse=True):
             del spot.hands[i]
 
-    def process_splitting(self, hand, dealer_card, spot):
+    def __process_splitting(self, hand, dealer_card, spot):
         """
         use recursion to handle splitting
         """
@@ -354,13 +438,16 @@ class Game:
             spot.hands.remove(hand)
             spot.hands.append(h1)
             spot.hands.append(h2)
-            self.process_splitting(h1, dealer_card, spot)
-            self.process_splitting(h2, dealer_card, spot)
+            self.__process_splitting(h1, dealer_card, spot)
+            self.__process_splitting(h2, dealer_card, spot)
 
     def process_spot(self, spot, dealer_card):
-        self.process_splitting(spot.hands[0], dealer_card, spot)
-        self.process_double_downs(dealer_card, spot)
-        self.process_hit_stand(dealer_card, spot)
+        """
+        handle player decisions after processing insurance bets and blackjacks
+        """
+        self.__process_splitting(spot.hands[0], dealer_card, spot)
+        self.__process_double_downs(dealer_card, spot)
+        self.__process_hit_stand(dealer_card, spot)
 
     def process_round(self):
         """
@@ -374,6 +461,11 @@ class Game:
             spot.hands.append(
                 PlayerHand(self.shoe.deal_cards(2), spot.player.get_bet_amount())
             )
+
+        print(f"starting round")
+        print(f"dealer: {dealer_hand}")
+        for spot in self.spots:
+            print(f"player: {spot.player}, hand: {spot.hands[0]}")
 
         # handle insurance bets
         if dealer_hand.cards[1].is_ace():
