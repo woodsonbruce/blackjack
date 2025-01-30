@@ -75,7 +75,12 @@ class Card:
         """
         whether a card is a ten, jack, queen, or king
         """
-        return self.value in (CardValue.TEN, CardValue.JACK, CardValue.QUEEN, CardValue.KING)
+        return self.value in (
+            CardValue.TEN,
+            CardValue.JACK,
+            CardValue.QUEEN,
+            CardValue.KING,
+        )
 
     def is_ace(self):
         """
@@ -157,13 +162,11 @@ class Hand:
         """
         whether a hand is soft or not
         """
+        tens = (10, 11, 12, 13)
         return (
             any(map(lambda x: x.is_ace(), self.cards))
             and sum(
-                [
-                    c.value.value if c.value.value not in (10, 11, 12, 13) else 10
-                    for c in self.cards
-                ]
+                [c.value.value if c.value.value not in tens else 10 for c in self.cards]
             )
             <= 11
         )
@@ -172,12 +175,10 @@ class Hand:
         """
         whether the hand is above 21 with every ace counted low
         """
+        tens = (10, 11, 12, 13)
         return (
             sum(
-                [
-                    c.value.value if c.value.value not in (10, 11, 12, 13) else 10
-                    for c in self.cards
-                ]
+                [c.value.value if c.value.value not in tens else 10 for c in self.cards]
             )
             > 21
         )
@@ -320,7 +321,8 @@ class Spot:
     """
     represents a spot at the table
     - insurance bets are per spot
-    - has a single hand and a single bet initially but hands may split and/or be doubled
+    - has a single hand and a single bet initially
+    - hands may split and/or be doubled
     - player can play multiple spots
     """
 
@@ -338,6 +340,7 @@ class TooManyPlayersException(Exception):
     exception class for insufficient player spots
     """
 
+
 class Game:
     """
     represents a shoe of game play
@@ -349,10 +352,10 @@ class Game:
         """
 
         # ensure all players can play specified hands
-        total_spots_required = sum([_[1] for _ in player_spot_data])
-        if total_spots_required > MAX_TABLE_SPOTS:
+        spots_req = sum([_[1] for _ in player_spot_data])
+        if spots_req > MAX_TABLE_SPOTS:
             raise TooManyPlayersException(
-                f"{total_spots_required} spots needed but table has {MAX_TABLE_SPOTS}"
+                f"{spots_req} spots needed but table has {MAX_TABLE_SPOTS}"
             )
 
         # set shoe
@@ -360,7 +363,7 @@ class Game:
 
         # create spots
         self.spots = []
-        for i in range(total_spots_required):
+        for i in range(spots_req):
             self.spots.append(Spot(i))
 
         # set player data
