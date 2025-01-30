@@ -279,19 +279,19 @@ class Player:
     represents a player
     """
 
-    def __init__(self, player_id, takes_insurance=False):
+    def __init__(self, name, takes_insurance=False):
         """
         constructs a player
         """
         self.takes_insurance = takes_insurance
         self.money = 10000
-        self.id = player_id
+        self.name = name
 
     def __repr__(self):
         """
         describes a player
         """
-        return f"Player<{self.id}>"
+        return self.name
 
     def get_bet_amount(self):
         """
@@ -520,8 +520,8 @@ class Game:
     def run(self):
         while not self.shoe.cut_card_out:
             self.process_round()
-        for i, agent in enumerate(self.players):
-            print(i, agent.money)
+        for player in self.players:
+            print(f"player {player} has {player.money} after round")
 
 
 # create two players
