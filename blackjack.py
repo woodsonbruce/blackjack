@@ -35,6 +35,27 @@ class CardValue(Enum):
     QUEEN = 12
     KING = 13
 
+    @classmethod
+    def as_char(cls, value):
+        """
+        returns a one-char representation of the card value
+        """
+        codes = {
+            1: "A",
+            2: "2",
+            3: "3",
+            4: "4",
+            5: "5",
+            6: "6",
+            7: "7",
+            8: "8",
+            9: "9",
+            10: "T",
+            11: "J",
+            12: "Q",
+            13: "K",
+        }
+        return codes[value]
 
 class CardSuit(Enum):
     """
@@ -46,6 +67,31 @@ class CardSuit(Enum):
     HEARTS = 3
     SPADES = 4
 
+    @classmethod
+    def as_unicode(cls, value):
+        """
+        returns a unicode char for the suit
+        """
+        codes = {
+            1: "♣",
+            2: "♦",
+            3: "♥",
+            4: "♠",
+        }
+        return codes[value]
+
+    @classmethod
+    def as_char(cls, value):
+        """
+        returns a char representation of the suit
+        """
+        codes = {
+            1: "C",
+            2: "D",
+            3: "H",
+            4: "S",
+        }
+        return codes[value]
 
 class PlayerStrategy(Enum):
     """
@@ -73,7 +119,7 @@ class Card:
         """
         describes card
         """
-        return f"{self.value.value}{self.suit.name[0]}"
+        return f"{self.value.as_char(self.value.value)}{self.suit.as_char(self.suit.value)}"
 
     def as_text(self):
         """
@@ -162,12 +208,6 @@ class Hand:
         """
         self.cards = cards
 
-    def __repr__(self):
-        """
-        describes a shoe
-        """
-        return f"Hand<{self.cards}>"
-
     def is_soft(self):
         """
         whether a hand is soft or not
@@ -232,6 +272,12 @@ class DealerHand(Hand):
         """
         super().__init__(cards)
 
+    def __repr__(self):
+        """
+        describes a dealer hand
+        """
+        return f"DealererHand<hole card:{self.cards[0]}, showing:{self.cards[1]}>"
+
     def dealer_hits(self):
         """
         whether a dealer hits a hand
@@ -255,6 +301,12 @@ class PlayerHand(Hand):
         super().__init__(cards)
         self.bet = bet
         self.is_doubled = False
+
+    def __repr__(self):
+        """
+        describes a player hand
+        """
+        return f"PlayerHand<{self.cards}>"
 
     def split(self, new_cards):
         """
@@ -544,11 +596,13 @@ class Game:
             if spot.player.doubles(hand, dealer_card):
                 hand.bet = 2 * hand.bet
                 double_card = self.shoe.deal_cards(1)
+                print(f"player {spot.player} doubles hand {hand} with card {double_card}")
                 hand.cards += double_card
                 hand.is_doubled = True
             if hand.is_bust():
                 index_busted.append(i)
                 spot.player.lose(hand.bet)
+                print(f"player {spot.player} busts and loses {hand.bet}")
         for i in sorted(index_busted, reverse=True):
             del spot.hands[i]
 
@@ -561,10 +615,15 @@ class Game:
             if not hand.is_doubled:
                 while not hand.is_bust() and spot.player.hits(hand, dealer_card):
                     hit_card = self.shoe.deal_cards(1)
+                    print(f"player {spot.player} hitting hand {hand} with {hit_card}")
                     hand.cards += hit_card
                     if hand.is_bust():
                         index_busted.append(i)
                         spot.player.lose(hand.bet)
+                        print(f"player {spot.player} busts and loses {hand.bet}")
+                if not hand.is_bust():
+                    print(f"player {spot.player} stands {hand}")
+
         for i in sorted(index_busted, reverse=True):
             del spot.hands[i]
 
@@ -578,6 +637,7 @@ class Game:
             and len(spot.hands) < MAX_RESPLIT
         ):
             h1, h2 = hand.split(self.shoe.deal_cards(2))
+            print(f"player {spot.player} splits hand {hand} into hands {h1} and {h2}")
             spot.hands.remove(hand)
             spot.hands.append(h1)
             spot.hands.append(h2)
@@ -596,29 +656,38 @@ class Game:
         """
         process a round
         """
+        print("dealing")
+
         # create dealer hand
         dealer_hand = DealerHand(self.shoe.deal_cards(2))
+        print(f"dealer hand: {dealer_hand}")
 
         # create player hands
         for spot in self.spots:
             spot.hands.append(
                 PlayerHand(self.shoe.deal_cards(2), spot.player.get_bet_amount())
             )
+            print(f"player hand ({spot.player}): {spot.hands[0]}")
 
         # handle insurance bets
         if dealer_hand.cards[1].is_ace():
+            print("dealer has an ace so taking insurance bets")
             for spot in self.spots:
                 if spot.player.takes_insurance:
                     if dealer_hand.cards[0].is_paint():
                         spot.player.win(spot.hands[0].bet)
+                        print(f"dealer has blackjack, player {spot.player} wins insurance bet {spot.hands[0].bet}")
                     else:
                         spot.player.lose(0.5 * spot.hands[0].bet)
+                        print(f"dealer does not have blackjack, player {spot.player} loses insurance bet {spot.hands[0].bet}")
 
         # handle dealer blackjack case
         if dealer_hand.is_bj():
+            print("dealer has blackjack")
             for spot in self.spots:
                 if not spot.hands[0].is_bj():
                     spot.player.lose(spot.hands[0].bet)
+                    print(f"player {spot.player} loses {spot.hands[0].bet}")
                 spot.hands = []
             return
 
@@ -626,6 +695,7 @@ class Game:
         for spot in self.spots:
             if spot.hands[0].is_bj():
                 spot.player.win(1.5 * spot.hands[0].bet)
+                print(f"player {spot.player} has blackjack, wins {1.5 * spot.hands[0].bet}")
                 spot.hands = []
 
         # handle player hands by spot position
@@ -666,12 +736,19 @@ class Game:
 
 
 # create two players
-john = Player("John", strategy= PlayerStrategy.RANDOM, takes_insurance=True)
+print("starting game")
+
+john = Player("John", strategy=PlayerStrategy.RANDOM, takes_insurance=True)
+print(f"player {john} joins with strategy {john.strategy.name.lower()} and takes insurance {john.takes_insurance}")
+
+
 katy = Player("Katy", strategy=PlayerStrategy.BASIC, takes_insurance=False)
+print(f"player {katy} joins with strategy {katy.strategy.name.lower()} and takes insurance {katy.takes_insurance}")
+
 
 # play all rounds in the shoe
-for _ in range(10):
-    print("---")
+for round in range(10):
+    print(f"starting round {round}")
     six_deck_shoe = Shoe(6)
     g = Game(six_deck_shoe, player_spot_data=[(john, 1), (katy, 3)])
     g.run()
