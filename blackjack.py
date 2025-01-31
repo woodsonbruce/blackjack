@@ -47,6 +47,16 @@ class CardSuit(Enum):
     SPADES = 4
 
 
+class PlayerStrategy(Enum):
+    """
+    enum of possible strategies
+    """
+
+    BASIC = 1
+    RANDOM = 2
+    Q_LEARN = 3
+
+
 class Card:
     """
     represents a single card
@@ -266,13 +276,16 @@ class Player:
     represents a player
     """
 
-    def __init__(self, name, takes_insurance=False):
+    def __init__(
+        self, name, money=10000, strategy=PlayerStrategy.RANDOM, takes_insurance=False
+    ):
         """
         constructs a player
         """
-        self.takes_insurance = takes_insurance
-        self.money = 10000
         self.name = name
+        self.money = money
+        self.strategy = strategy
+        self.takes_insurance = takes_insurance
 
     def __repr__(self):
         """
@@ -302,19 +315,22 @@ class Player:
         """
         whether a player splits a hand
         """
-        return random.random() < 0.5
+        if self.strategy == PlayerStrategy.RANDOM:
+            return random.random() < 0.5
 
     def doubles(self, player_hand, dealer_card):
         """
         whether a player doubles a hand
         """
-        return random.random() < 0.5
+        if self.strategy == PlayerStrategy.RANDOM:
+            return random.random() < 0.5
 
     def hits(self, player_hand, dealer_card):
         """
         whether a player hits a hand
         """
-        return random.random() < 0.5
+        if self.strategy == PlayerStrategy.RANDOM:
+            return random.random() < 0.5
 
 
 class Spot:
