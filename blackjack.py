@@ -317,6 +317,49 @@ class Player:
         """
         if self.strategy == PlayerStrategy.RANDOM:
             return random.random() < 0.5
+        elif self.strategy == PlayerStrategy.BASIC:
+            return self.__splits_basic(player_hand, dealer_card)
+
+    def __splits_basic(self, player_hand, dealer_card):
+        """
+        whether a player splits a hand according to basic strategy
+        """
+        if player_hand.cards[0] in (CardValue.EIGHT, CardValue.ACE):
+            return True
+        if player_hand.cards[0] in (CardValue.TWO, CardValue.THREE, CardValue.SEVEN):
+            if dealer_card in (
+                CardValue.TWO,
+                CardValue.THREE,
+                CardValue.FOUR,
+                CardValue.FIVE,
+                CardValue.SIX,
+                CardValue.SEVEN,
+            ):
+                return True
+        if player_hand.cards[0] is CardValue.FOUR:
+            if dealer_card in (CardValue.FIVE, CardValue.SIX):
+                return True
+        if player_hand.cards[0] is CardValue.SIX:
+            if dealer_card in (
+                CardValue.TWO,
+                CardValue.THREE,
+                CardValue.FOUR,
+                CardValue.FIVE,
+                CardValue.SIX,
+            ):
+                return True
+        if player_hand.cards[0] is CardValue.NINE:
+            if dealer_card in (
+                CardValue.TWO,
+                CardValue.THREE,
+                CardValue.FOUR,
+                CardValue.FIVE,
+                CardValue.SIX,
+                CardValue.EIGHT,
+                CardValue.NINE,
+            ):
+                return True
+        return False
 
     def doubles(self, player_hand, dealer_card):
         """
@@ -324,6 +367,79 @@ class Player:
         """
         if self.strategy == PlayerStrategy.RANDOM:
             return random.random() < 0.5
+        elif self.strategy == PlayerStrategy.BASIC:
+            return self.__doubles_basic(player_hand, dealer_card)
+
+    def __doubles_basic(self, player_hand, dealer_card):
+        """
+        whether a player doubles a hand according to basic strategy
+        """
+        if not player_hand.is_soft():
+            if player_hand.get_sum() == 9:
+                if dealer_card in (
+                    CardValue.THREE,
+                    CardValue.FOUR,
+                    CardValue.FIVE,
+                    CardValue.SIX,
+                ):
+                    return True
+            elif player_hand.get_sum() == 10:
+                if dealer_card in (
+                    CardValue.TWO,
+                    CardValue.THREE,
+                    CardValue.FOUR,
+                    CardValue.FIVE,
+                    CardValue.SIX,
+                    CardValue.SEVEN,
+                    CardValue.EIGHT,
+                    CardValue.NINE,
+                ):
+                    return True
+            elif player_hand.get_sum() == 11:
+                if dealer_card in (
+                    CardValue.TWO,
+                    CardValue.THREE,
+                    CardValue.FOUR,
+                    CardValue.FIVE,
+                    CardValue.SIX,
+                    CardValue.SEVEN,
+                    CardValue.EIGHT,
+                    CardValue.NINE,
+                    CardValue.TEN,
+                ):
+                    return True
+        else:  # is soft
+            if (
+                CardValue.TWO in player_hand.cards
+                or CardValue.THREE in player_hand.cards
+            ):
+                if dealer_card in (
+                    CardValue.FIVE,
+                    CardValue.SIX,
+                ):
+                    return True
+            if (
+                CardValue.FOUR in player_hand.cards
+                or CardValue.FIVE in player_hand.cards
+            ):
+                if dealer_card in (
+                    CardValue.FOUR,
+                    CardValue.FIVE,
+                    CardValue.SIX,
+                ):
+                    return True
+            if (
+                CardValue.SIX in player_hand.cards
+                or CardValue.SEVEN in player_hand.cards
+            ):
+                if dealer_card in (
+                    CardValue.THREE,
+                    CardValue.FOUR,
+                    CardValue.FIVE,
+                    CardValue.SIX,
+                ):
+                    return True
+        return False
 
     def hits(self, player_hand, dealer_card):
         """
@@ -331,6 +447,32 @@ class Player:
         """
         if self.strategy == PlayerStrategy.RANDOM:
             return random.random() < 0.5
+        elif self.strategy == PlayerStrategy.BASIC:
+            return self.__hits_basic(player_hand, dealer_card)
+
+    def __hits_basic(self, player_hand, dealer_card):
+        """
+        whether a player hits a hand according to basic strategy
+        """
+        if player_hand.get_sum() < 12:
+            return True
+        if player_hand.get_sum() == 12:
+            if dealer_card not in (
+                CardValue.FOUR,
+                CardValue.FIVE,
+                CardValue.SIX,
+            ):
+                return True
+        if player_hand.get_sum() in (13, 14, 15, 16):
+            if dealer_card not in (
+                CardValue.TWO,
+                CardValue.THREE,
+                CardValue.FOUR,
+                CardValue.FIVE,
+                CardValue.SIX,
+            ):
+                return True
+        return False
 
 
 class Spot:
@@ -524,12 +666,12 @@ class Game:
 
 
 # create two players
-a = Player("John", takes_insurance=True)
-b = Player("Katy", takes_insurance=False)
+john = Player("John", strategy= PlayerStrategy.RANDOM, takes_insurance=True)
+katy = Player("Katy", strategy=PlayerStrategy.BASIC, takes_insurance=False)
 
 # play all rounds in the shoe
 for _ in range(10):
     print("---")
     six_deck_shoe = Shoe(6)
-    g = Game(six_deck_shoe, player_spot_data=[(a, 1), (b, 3)])
+    g = Game(six_deck_shoe, player_spot_data=[(john, 1), (katy, 3)])
     g.run()
