@@ -376,10 +376,10 @@ class Player:
         """
         whether a player splits a hand according to basic strategy
         """
-        if player_hand.cards[0] in (CardValue.EIGHT, CardValue.ACE):
+        if player_hand.cards[0].value in (CardValue.EIGHT, CardValue.ACE):
             return True
-        if player_hand.cards[0] in (CardValue.TWO, CardValue.THREE, CardValue.SEVEN):
-            if dealer_card in (
+        if player_hand.cards[0].value in (CardValue.TWO, CardValue.THREE, CardValue.SEVEN):
+            if dealer_card.value in (
                 CardValue.TWO,
                 CardValue.THREE,
                 CardValue.FOUR,
@@ -388,11 +388,11 @@ class Player:
                 CardValue.SEVEN,
             ):
                 return True
-        if player_hand.cards[0] is CardValue.FOUR:
-            if dealer_card in (CardValue.FIVE, CardValue.SIX):
+        if player_hand.cards[0].value is CardValue.FOUR:
+            if dealer_card.value in (CardValue.FIVE, CardValue.SIX):
                 return True
-        if player_hand.cards[0] is CardValue.SIX:
-            if dealer_card in (
+        if player_hand.cards[0].value is CardValue.SIX:
+            if dealer_card.value in (
                 CardValue.TWO,
                 CardValue.THREE,
                 CardValue.FOUR,
@@ -400,8 +400,8 @@ class Player:
                 CardValue.SIX,
             ):
                 return True
-        if player_hand.cards[0] is CardValue.NINE:
-            if dealer_card in (
+        if player_hand.cards[0].value is CardValue.NINE:
+            if dealer_card.value in (
                 CardValue.TWO,
                 CardValue.THREE,
                 CardValue.FOUR,
@@ -428,7 +428,7 @@ class Player:
         """
         if not player_hand.is_soft():
             if player_hand.get_sum() == 9:
-                if dealer_card in (
+                if dealer_card.value in (
                     CardValue.THREE,
                     CardValue.FOUR,
                     CardValue.FIVE,
@@ -436,7 +436,7 @@ class Player:
                 ):
                     return True
             elif player_hand.get_sum() == 10:
-                if dealer_card in (
+                if dealer_card.value in (
                     CardValue.TWO,
                     CardValue.THREE,
                     CardValue.FOUR,
@@ -448,7 +448,7 @@ class Player:
                 ):
                     return True
             elif player_hand.get_sum() == 11:
-                if dealer_card in (
+                if dealer_card.value in (
                     CardValue.TWO,
                     CardValue.THREE,
                     CardValue.FOUR,
@@ -462,29 +462,29 @@ class Player:
                     return True
         else:  # is soft
             if (
-                CardValue.TWO in player_hand.cards
-                or CardValue.THREE in player_hand.cards
+                CardValue.TWO in tuple(c.value for c in player_hand.cards)
+                or CardValue.THREE in tuple(c.value for c in player_hand.cards)
             ):
-                if dealer_card in (
+                if dealer_card.value in (
                     CardValue.FIVE,
                     CardValue.SIX,
                 ):
                     return True
             if (
-                CardValue.FOUR in player_hand.cards
-                or CardValue.FIVE in player_hand.cards
+                CardValue.FOUR in tuple(c.value for c in player_hand.cards)
+                or CardValue.FIVE in tuple(c.value for c in player_hand.cards)
             ):
-                if dealer_card in (
+                if dealer_card.value in (
                     CardValue.FOUR,
                     CardValue.FIVE,
                     CardValue.SIX,
                 ):
                     return True
             if (
-                CardValue.SIX in player_hand.cards
-                or CardValue.SEVEN in player_hand.cards
+                CardValue.SIX in tuple(c.value for c in player_hand.cards)
+                or CardValue.SEVEN in tuple(c.value for c in player_hand.cards)
             ):
-                if dealer_card in (
+                if dealer_card.value in (
                     CardValue.THREE,
                     CardValue.FOUR,
                     CardValue.FIVE,
@@ -509,14 +509,14 @@ class Player:
         if player_hand.get_sum() < 12:
             return True
         if player_hand.get_sum() == 12:
-            if dealer_card not in (
+            if dealer_card.value not in (
                 CardValue.FOUR,
                 CardValue.FIVE,
                 CardValue.SIX,
             ):
                 return True
         if player_hand.get_sum() in (13, 14, 15, 16):
-            if dealer_card not in (
+            if dealer_card.value not in (
                 CardValue.TWO,
                 CardValue.THREE,
                 CardValue.FOUR,
