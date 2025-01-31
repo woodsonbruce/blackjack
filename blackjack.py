@@ -57,6 +57,7 @@ class CardValue(Enum):
         }
         return codes[value]
 
+
 class CardSuit(Enum):
     """
     enum of card suits
@@ -92,6 +93,7 @@ class CardSuit(Enum):
             4: "S",
         }
         return codes[value]
+
 
 class PlayerStrategy(Enum):
     """
@@ -301,6 +303,10 @@ class PlayerHand(Hand):
         super().__init__(cards)
         self.bet = bet
         self.is_doubled = False
+        # self.surrender_decisions = []
+        # self.pair_decisions = []
+        # self.double_decisions = []
+        # self.hit_stand_decisions = []
 
     def __repr__(self):
         """
@@ -378,7 +384,11 @@ class Player:
         """
         if player_hand.cards[0].value in (CardValue.EIGHT, CardValue.ACE):
             return True
-        if player_hand.cards[0].value in (CardValue.TWO, CardValue.THREE, CardValue.SEVEN):
+        if player_hand.cards[0].value in (
+            CardValue.TWO,
+            CardValue.THREE,
+            CardValue.SEVEN,
+        ):
             if dealer_card.value in (
                 CardValue.TWO,
                 CardValue.THREE,
@@ -461,29 +471,26 @@ class Player:
                 ):
                     return True
         else:  # is soft
-            if (
-                CardValue.TWO in tuple(c.value for c in player_hand.cards)
-                or CardValue.THREE in tuple(c.value for c in player_hand.cards)
-            ):
+            if CardValue.TWO in tuple(
+                c.value for c in player_hand.cards
+            ) or CardValue.THREE in tuple(c.value for c in player_hand.cards):
                 if dealer_card.value in (
                     CardValue.FIVE,
                     CardValue.SIX,
                 ):
                     return True
-            if (
-                CardValue.FOUR in tuple(c.value for c in player_hand.cards)
-                or CardValue.FIVE in tuple(c.value for c in player_hand.cards)
-            ):
+            if CardValue.FOUR in tuple(
+                c.value for c in player_hand.cards
+            ) or CardValue.FIVE in tuple(c.value for c in player_hand.cards):
                 if dealer_card.value in (
                     CardValue.FOUR,
                     CardValue.FIVE,
                     CardValue.SIX,
                 ):
                     return True
-            if (
-                CardValue.SIX in tuple(c.value for c in player_hand.cards)
-                or CardValue.SEVEN in tuple(c.value for c in player_hand.cards)
-            ):
+            if CardValue.SIX in tuple(
+                c.value for c in player_hand.cards
+            ) or CardValue.SEVEN in tuple(c.value for c in player_hand.cards):
                 if dealer_card.value in (
                     CardValue.THREE,
                     CardValue.FOUR,
@@ -543,6 +550,7 @@ class Spot:
         self.table_position = table_position
         self.player = None
         self.hands = []
+        # self.insurance_decisions = []
 
 
 class TooManyPlayersException(Exception):
@@ -596,7 +604,9 @@ class Game:
             if spot.player.doubles(hand, dealer_card):
                 hand.bet = 2 * hand.bet
                 double_card = self.shoe.deal_cards(1)
-                print(f"player {spot.player} doubles hand {hand} with card {double_card}")
+                print(
+                    f"player {spot.player} doubles hand {hand} with card {double_card}"
+                )
                 hand.cards += double_card
                 hand.is_doubled = True
             if hand.is_bust():
@@ -656,8 +666,6 @@ class Game:
         """
         process a round
         """
-        print("dealing")
-
         # create dealer hand
         dealer_hand = DealerHand(self.shoe.deal_cards(2))
         print(f"dealer hand: {dealer_hand}")
@@ -676,10 +684,14 @@ class Game:
                 if spot.player.takes_insurance:
                     if dealer_hand.cards[0].is_paint():
                         spot.player.win(spot.hands[0].bet)
-                        print(f"dealer has blackjack, player {spot.player} wins insurance bet {spot.hands[0].bet}")
+                        print(
+                            f"dealer has blackjack, player {spot.player} wins insurance bet {spot.hands[0].bet}"
+                        )
                     else:
                         spot.player.lose(0.5 * spot.hands[0].bet)
-                        print(f"dealer does not have blackjack, player {spot.player} loses insurance bet {spot.hands[0].bet}")
+                        print(
+                            f"dealer does not have blackjack, player {spot.player} loses insurance bet {spot.hands[0].bet}"
+                        )
 
         # handle dealer blackjack case
         if dealer_hand.is_bj():
@@ -695,7 +707,9 @@ class Game:
         for spot in self.spots:
             if spot.hands[0].is_bj():
                 spot.player.win(1.5 * spot.hands[0].bet)
-                print(f"player {spot.player} has blackjack, wins {1.5 * spot.hands[0].bet}")
+                print(
+                    f"player {spot.player} has blackjack, wins {1.5 * spot.hands[0].bet}"
+                )
                 spot.hands = []
 
         # handle player hands by spot position
@@ -725,30 +739,38 @@ class Game:
         for spot in self.spots:
             spot.hands = []
 
-    def run(self):
+    def play_entire_shoe(self):
         """
         play all rounds in the shoe
         """
+        round = 1
         while not self.shoe.cut_card_out:
+            print(f"dealing round {round}")
             self.process_round()
-        for player in self.players:
-            print(f"player {player} has {player.money} after round")
+
+            for player in self.players:
+                print(f"player {player} has {player.money} after round {round}")
+            round += 1
 
 
 # create two players
-print("starting game")
+print("starting simulation")
 
 john = Player("John", strategy=PlayerStrategy.RANDOM, takes_insurance=True)
-print(f"player {john} joins with strategy {john.strategy.name.lower()} and takes insurance {john.takes_insurance}")
-
+print(
+    f"player {john} with strategy {john.strategy.name.lower()} and takes insurance {john.takes_insurance} created"
+)
 
 katy = Player("Katy", strategy=PlayerStrategy.BASIC, takes_insurance=False)
-print(f"player {katy} joins with strategy {katy.strategy.name.lower()} and takes insurance {katy.takes_insurance}")
-
+print(
+    f"player {katy} with strategy {katy.strategy.name.lower()} and takes insurance {katy.takes_insurance} created"
+)
 
 # play all rounds in the shoe
-for round in range(10):
-    print(f"starting round {round}")
+for shoe_number in range(10):
+    print(f"starting shoe number {shoe_number}")
     six_deck_shoe = Shoe(6)
     g = Game(six_deck_shoe, player_spot_data=[(john, 1), (katy, 3)])
-    g.run()
+    g.play_entire_shoe()
+
+print("ending simulation")
