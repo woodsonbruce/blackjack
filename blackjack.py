@@ -426,7 +426,7 @@ class Game:
             self.__process_splitting(h1, dealer_card, spot)
             self.__process_splitting(h2, dealer_card, spot)
 
-    def process_spot(self, spot, dealer_card):
+    def __process_spot(self, spot, dealer_card):
         """
         handle player decisions after processing insurance bets and blackjacks
         """
@@ -473,7 +473,7 @@ class Game:
         # handle player hands by spot position
         for spot in self.spots:
             if spot.hands:
-                self.process_spot(spot, dealer_hand.cards[1])
+                self.__process_spot(spot, dealer_hand.cards[1])
 
         # handle dealer hand
         while dealer_hand.dealer_hits():
