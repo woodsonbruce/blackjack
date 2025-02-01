@@ -6,8 +6,20 @@ blackjack simulation
 
 from collections import deque
 from enum import Enum
+import logging
 import random
 
+
+# create logger
+logging.basicConfig(filename="session.log",
+                    format="%(asctime)s - %(levelname)s - %(message)s",
+                    filemode="w")
+
+# Creating an object
+logger = logging.getLogger()
+
+# Setting the threshold of logger to DEBUG
+logger.setLevel(logging.DEBUG)
 
 # game constants
 CARDS_PER_DECK = 52
@@ -572,9 +584,9 @@ class Game:
         # ensure all players can play specified hands
         spots_req = sum([_[1] for _ in player_spot_data])
         if spots_req > MAX_TABLE_SPOTS:
-            raise TooManyPlayersException(
-                f"{spots_req} spots needed but table has {MAX_TABLE_SPOTS}"
-            )
+            msg = f"{spots_req} spots needed but table has {MAX_TABLE_SPOTS}"
+            logger.error(msg)
+            raise TooManyPlayersException(msg)
 
         # set shoe
         self.shoe = shoe
@@ -604,7 +616,7 @@ class Game:
             if spot.player.doubles(hand, dealer_card):
                 hand.bet = 2 * hand.bet
                 double_card = self.shoe.deal_cards(1)
-                print(
+                logger.info(
                     f"player {spot.player} doubles hand {hand} with card {double_card}"
                 )
                 hand.cards += double_card
@@ -612,7 +624,7 @@ class Game:
             if hand.is_bust():
                 index_busted.append(i)
                 spot.player.lose(hand.bet)
-                print(f"player {spot.player} busts and loses {hand.bet}")
+                logger.info(f"player {spot.player} busts and loses {hand.bet}")
         for i in sorted(index_busted, reverse=True):
             del spot.hands[i]
 
@@ -625,14 +637,14 @@ class Game:
             if not hand.is_doubled:
                 while not hand.is_bust() and spot.player.hits(hand, dealer_card):
                     hit_card = self.shoe.deal_cards(1)
-                    print(f"player {spot.player} hitting hand {hand} with {hit_card}")
+                    logger.info(f"player {spot.player} hitting hand {hand} with {hit_card}")
                     hand.cards += hit_card
                     if hand.is_bust():
                         index_busted.append(i)
                         spot.player.lose(hand.bet)
-                        print(f"player {spot.player} busts and loses {hand.bet}")
+                        logger.info(f"player {spot.player} busts and loses {hand.bet}")
                 if not hand.is_bust():
-                    print(f"player {spot.player} stands {hand}")
+                    logger.info(f"player {spot.player} stands {hand}")
 
         for i in sorted(index_busted, reverse=True):
             del spot.hands[i]
@@ -647,7 +659,7 @@ class Game:
             and len(spot.hands) < MAX_RESPLIT
         ):
             h1, h2 = hand.split(self.shoe.deal_cards(2))
-            print(f"player {spot.player} splits hand {hand} into hands {h1} and {h2}")
+            logger.info(f"player {spot.player} splits hand {hand} into hands {h1} and {h2}")
             spot.hands.remove(hand)
             spot.hands.append(h1)
             spot.hands.append(h2)
@@ -668,38 +680,38 @@ class Game:
         """
         # create dealer hand
         dealer_hand = DealerHand(self.shoe.deal_cards(2))
-        print(f"dealer hand: {dealer_hand}")
+        logger.info(f"dealer hand: {dealer_hand}")
 
         # create player hands
         for spot in self.spots:
             spot.hands.append(
                 PlayerHand(self.shoe.deal_cards(2), spot.player.get_bet_amount())
             )
-            print(f"player hand ({spot.player}): {spot.hands[0]}")
+            logger.info(f"player hand ({spot.player}): {spot.hands[0]}")
 
         # handle insurance bets
         if dealer_hand.cards[1].is_ace():
-            print("dealer has an ace so taking insurance bets")
+            logger.info("dealer has an ace so taking insurance bets")
             for spot in self.spots:
                 if spot.player.takes_insurance:
                     if dealer_hand.cards[0].is_paint():
                         spot.player.win(spot.hands[0].bet)
-                        print(
+                        logger.info(
                             f"dealer has blackjack, player {spot.player} wins insurance bet {spot.hands[0].bet}"
                         )
                     else:
                         spot.player.lose(0.5 * spot.hands[0].bet)
-                        print(
+                        logger.info(
                             f"dealer does not have blackjack, player {spot.player} loses insurance bet {spot.hands[0].bet}"
                         )
 
         # handle dealer blackjack case
         if dealer_hand.is_bj():
-            print("dealer has blackjack")
+            logger.info("dealer has blackjack")
             for spot in self.spots:
                 if not spot.hands[0].is_bj():
                     spot.player.lose(spot.hands[0].bet)
-                    print(f"player {spot.player} loses {spot.hands[0].bet}")
+                    logger.info(f"player {spot.player} loses {spot.hands[0].bet}")
                 spot.hands = []
             return
 
@@ -707,7 +719,7 @@ class Game:
         for spot in self.spots:
             if spot.hands[0].is_bj():
                 spot.player.win(1.5 * spot.hands[0].bet)
-                print(
+                logger.info(
                     f"player {spot.player} has blackjack, wins {1.5 * spot.hands[0].bet}"
                 )
                 spot.hands = []
@@ -745,32 +757,32 @@ class Game:
         """
         round = 1
         while not self.shoe.cut_card_out:
-            print(f"dealing round {round}")
+            logger.info(f"dealing round {round}")
             self.process_round()
 
             for player in self.players:
-                print(f"player {player} has {player.money} after round {round}")
+                logger.info(f"player {player} has {player.money} after round {round}")
             round += 1
 
 
 # create two players
-print("starting simulation")
+logger.info("starting simulation")
 
 john = Player("John", strategy=PlayerStrategy.RANDOM, takes_insurance=True)
-print(
+logger.info(
     f"player {john} with strategy {john.strategy.name.lower()} and takes insurance {john.takes_insurance} created"
 )
 
 katy = Player("Katy", strategy=PlayerStrategy.BASIC, takes_insurance=False)
-print(
+logger.info(
     f"player {katy} with strategy {katy.strategy.name.lower()} and takes insurance {katy.takes_insurance} created"
 )
 
 # play all rounds in the shoe
 for shoe_number in range(10):
-    print(f"starting shoe number {shoe_number}")
+    logger.info(f"starting shoe number {shoe_number}")
     six_deck_shoe = Shoe(6)
     g = Game(six_deck_shoe, player_spot_data=[(john, 1), (katy, 3)])
     g.play_entire_shoe()
 
-print("ending simulation")
+logger.info("ending simulation")
