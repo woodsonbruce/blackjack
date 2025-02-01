@@ -389,7 +389,7 @@ class Player:
         """
         if self.strategy == PlayerStrategy.RANDOM:
             return random.random() < 0.5
-        elif self.strategy == PlayerStrategy.BASIC:
+        if self.strategy == PlayerStrategy.BASIC:
             return self.__splits_basic(player_hand, dealer_card)
 
     def __splits_basic(self, player_hand, dealer_card):
@@ -443,7 +443,7 @@ class Player:
         """
         if self.strategy == PlayerStrategy.RANDOM:
             return random.random() < 0.5
-        elif self.strategy == PlayerStrategy.BASIC:
+        if self.strategy == PlayerStrategy.BASIC:
             return self.__doubles_basic(player_hand, dealer_card)
 
     def __doubles_basic(self, player_hand, dealer_card):
@@ -520,7 +520,7 @@ class Player:
         """
         if self.strategy == PlayerStrategy.RANDOM:
             return random.random() < 0.5
-        elif self.strategy == PlayerStrategy.BASIC:
+        if self.strategy == PlayerStrategy.BASIC:
             return self.__hits_basic(player_hand, dealer_card)
 
     def __hits_basic(self, player_hand, dealer_card):
