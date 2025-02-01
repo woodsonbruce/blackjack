@@ -11,9 +11,11 @@ import random
 
 
 # create logger
-logging.basicConfig(filename="session.log",
-                    format="%(asctime)s - %(levelname)s - %(message)s",
-                    filemode="w")
+logging.basicConfig(
+    filename="session.log",
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    filemode="w",
+)
 
 # Creating an object
 logger = logging.getLogger()
@@ -617,14 +619,17 @@ class Game:
                 hand.bet = 2 * hand.bet
                 double_card = self.shoe.deal_cards(1)
                 logger.info(
-                    f"player {spot.player} doubles hand {hand} with card {double_card}"
+                    "player %s doubles hand %s with card %s",
+                    spot.player,
+                    hand,
+                    double_card,
                 )
                 hand.cards += double_card
                 hand.is_doubled = True
             if hand.is_bust():
                 index_busted.append(i)
                 spot.player.lose(hand.bet)
-                logger.info(f"player {spot.player} busts and loses {hand.bet}")
+                logger.info("player %s busts and loses %d", spot.player, hand.bet)
         for i in sorted(index_busted, reverse=True):
             del spot.hands[i]
 
@@ -637,14 +642,18 @@ class Game:
             if not hand.is_doubled:
                 while not hand.is_bust() and spot.player.hits(hand, dealer_card):
                     hit_card = self.shoe.deal_cards(1)
-                    logger.info(f"player {spot.player} hitting hand {hand} with {hit_card}")
+                    logger.info(
+                        "player %s hitting hand %s with %s", spot.player, hand, hit_card
+                    )
                     hand.cards += hit_card
                     if hand.is_bust():
                         index_busted.append(i)
                         spot.player.lose(hand.bet)
-                        logger.info(f"player {spot.player} busts and loses {hand.bet}")
+                        logger.info(
+                            "player %s busts and loses %d", spot.player, hand.bet
+                        )
                 if not hand.is_bust():
-                    logger.info(f"player {spot.player} stands {hand}")
+                    logger.info("player %s stands %s", spot.player, hand)
 
         for i in sorted(index_busted, reverse=True):
             del spot.hands[i]
@@ -659,7 +668,13 @@ class Game:
             and len(spot.hands) < MAX_RESPLIT
         ):
             h1, h2 = hand.split(self.shoe.deal_cards(2))
-            logger.info(f"player {spot.player} splits hand {hand} into hands {h1} and {h2}")
+            logger.info(
+                "player %s splits hand %s into hands %s and %s",
+                spot.player,
+                hand,
+                h1,
+                h2,
+            )
             spot.hands.remove(hand)
             spot.hands.append(h1)
             spot.hands.append(h2)
@@ -680,14 +695,14 @@ class Game:
         """
         # create dealer hand
         dealer_hand = DealerHand(self.shoe.deal_cards(2))
-        logger.info(f"dealer hand: {dealer_hand}")
+        logger.info("dealer hand: %s", dealer_hand)
 
         # create player hands
         for spot in self.spots:
             spot.hands.append(
                 PlayerHand(self.shoe.deal_cards(2), spot.player.get_bet_amount())
             )
-            logger.info(f"player hand ({spot.player}): {spot.hands[0]}")
+            logger.info("player hand (%s): %s", spot.player, spot.hands[0])
 
         # handle insurance bets
         if dealer_hand.cards[1].is_ace():
@@ -697,12 +712,16 @@ class Game:
                     if dealer_hand.cards[0].is_paint():
                         spot.player.win(spot.hands[0].bet)
                         logger.info(
-                            f"dealer has blackjack, player {spot.player} wins insurance bet {spot.hands[0].bet}"
+                            "dealer has blackjack, player %s wins insurance bet %d",
+                            spot.player,
+                            spot.hands[0].bet,
                         )
                     else:
                         spot.player.lose(0.5 * spot.hands[0].bet)
                         logger.info(
-                            f"dealer does not have blackjack, player {spot.player} loses insurance bet {spot.hands[0].bet}"
+                            "dealer does not have blackjack, player %s loses insurance bet %d",
+                            spot.player,
+                            spot.hands[0].bet,
                         )
 
         # handle dealer blackjack case
@@ -711,16 +730,19 @@ class Game:
             for spot in self.spots:
                 if not spot.hands[0].is_bj():
                     spot.player.lose(spot.hands[0].bet)
-                    logger.info(f"player {spot.player} loses {spot.hands[0].bet}")
+                    logger.info("player %s loses %d", spot.player, spot.hands[0].bet)
                 spot.hands = []
             return
 
         # handle player blackjacks
         for spot in self.spots:
             if spot.hands[0].is_bj():
-                spot.player.win(1.5 * spot.hands[0].bet)
+                win = 1.5 * spot.hands[0].bet
+                spot.player.win(win)
                 logger.info(
-                    f"player {spot.player} has blackjack, wins {1.5 * spot.hands[0].bet}"
+                    "player %s has blackjack, wins %d",
+                    spot.player,
+                    win,
                 )
                 spot.hands = []
 
@@ -755,14 +777,16 @@ class Game:
         """
         play all rounds in the shoe
         """
-        round = 1
+        round_number = 1
         while not self.shoe.cut_card_out:
-            logger.info(f"dealing round {round}")
+            logger.info("dealing round %d", round_number)
             self.process_round()
 
             for player in self.players:
-                logger.info(f"player {player} has {player.money} after round {round}")
-            round += 1
+                logger.info(
+                    "player %s has %d after round %d", player, player.money, round_number
+                )
+            round_number += 1
 
 
 # create two players
@@ -770,17 +794,23 @@ logger.info("starting simulation")
 
 john = Player("John", strategy=PlayerStrategy.RANDOM, takes_insurance=True)
 logger.info(
-    f"player {john} with strategy {john.strategy.name.lower()} and takes insurance {john.takes_insurance} created"
+    "player %s with strategy %s and takes insurance %s created",
+    john,
+    john.strategy.name.lower(),
+    str(john.takes_insurance),
 )
 
 katy = Player("Katy", strategy=PlayerStrategy.BASIC, takes_insurance=False)
 logger.info(
-    f"player {katy} with strategy {katy.strategy.name.lower()} and takes insurance {katy.takes_insurance} created"
+    "player %s with strategy %s and takes insurance %s created",
+    katy,
+    katy.strategy.name.lower(),
+    str(katy.takes_insurance),
 )
 
 # play all rounds in the shoe
 for shoe_number in range(10):
-    logger.info(f"starting shoe number {shoe_number}")
+    logger.info("starting shoe number %d", shoe_number)
     six_deck_shoe = Shoe(6)
     g = Game(six_deck_shoe, player_spot_data=[(john, 1), (katy, 3)])
     g.play_entire_shoe()
