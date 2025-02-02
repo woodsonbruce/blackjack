@@ -304,7 +304,7 @@ class DealerHand(Hand):
         if not self.is_soft():
             return self.get_sum() < 17
         if DEALER_HITS_SOFT_17:
-            return self.get_sum() < 18
+            return self.get_sum() <= 17
         return self.get_sum() < 17
 
 
