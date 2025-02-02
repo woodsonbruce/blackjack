@@ -397,7 +397,7 @@ class Player:
         whether a player splits a hand
         """
         if self.strategy == PlayerStrategy.RANDOM:
-            return random.random() < 0.5
+            return random.choice([True, False])
         if self.strategy == PlayerStrategy.BASIC:
             return self.__splits_basic(player_hand, dealer_card)
 
@@ -451,7 +451,7 @@ class Player:
         whether a player doubles a hand
         """
         if self.strategy == PlayerStrategy.RANDOM:
-            return random.random() < 0.5
+            return random.choice([True, False])
         if self.strategy == PlayerStrategy.BASIC:
             return self.__doubles_basic(player_hand, dealer_card)
 
@@ -528,7 +528,7 @@ class Player:
         whether a player hits a hand
         """
         if self.strategy == PlayerStrategy.RANDOM:
-            return random.random() < 0.5
+            return random.choice([True, False])
         if self.strategy == PlayerStrategy.BASIC:
             return self.__hits_basic(player_hand, dealer_card)
 
@@ -802,6 +802,52 @@ class Game:
                     round_number,
                 )
             round_number += 1
+
+
+class Decision:
+    """
+    represents a blackjack decision
+    """
+    def __init__(self, player_hand, dealer_card, decision, outcome):
+        self.player_hand = player_hand
+        self.dealer_card = dealer_card
+        self.decision = decision
+        self.outcome = outcome
+
+
+class Q_LEARNER:
+    """
+    class to hold and update decision data and default decisions for a
+    q learning decision category, eg insurance, surrender, split, double,
+    hit, and stand
+    """
+    def __init__(self):
+        self.decision_data = dict()
+        self.decisions = dict()
+
+    def add_data(self, data):
+        """
+        adds decision data tuples
+        - player cards
+        - dealer card
+        - decision
+        = outcome
+        - discount steps
+
+        """
+        pass
+
+    def update_decisions(self):
+        """
+        updates decision based on data
+        """
+        pass
+
+    def get_decision(self, player_cards, dealer_card):
+        """
+        gets decision
+        """
+        pass
 
 
 # start simulation
