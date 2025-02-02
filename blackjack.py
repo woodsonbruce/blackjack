@@ -832,7 +832,8 @@ class QLearner:
     """
 
     def __init__(self):
-        self.decision_data = []
+        self.two_card_decision_data = []
+        self.card_sum_decision_data = []
 
         # populate with random bool values to start
         self.two_card_decisions = {}
