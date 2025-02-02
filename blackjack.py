@@ -833,15 +833,24 @@ class QLearner:
 
     def __init__(self):
         self.decision_data = []
-        self.decisions = {}
+
         # populate with random bool values to start
+        self.two_card_decisions = {}
+        self.card_sum_decisions = {}
 
     @classmethod
-    def __hand_and_dealer_card_to_key(cls, hand, dealer_card):
+    def __get_two_card_decision_key(cls, player_hand, dealer_card):
         """
         returns a key for use in the decision dictionary
         """
-        pass
+        player_vals = sorted(
+            [
+                CardValue.as_char(player_hand.cards[0].value.value),
+                CardValue.as_char(player_hand.cards[1].value.value),
+            ]
+        )
+        dealer_val = CardValue.as_char(dealer_card.value.value)
+        return player_vals[0] + player_vals[1] + dealer_val
 
     def add_decision(self, decision):
         """
@@ -861,11 +870,19 @@ class QLearner:
         """
         pass
 
-    def get_decision(self, player_cards, dealer_card):
+    def get_two_card_decision(self, player_hand, dealer_card):
         """
-        gets decision
+        gets the decision based on two cards
         """
         pass
+
+    def get_hand_sum_decision(self, hand_sum, dealer_card):
+        """
+        gets the decision based on hand sum
+        """
+
+    def test(self, p, d):
+        return self.__class__.__get_two_card_decision_key(p, d)
 
 
 # start simulation
