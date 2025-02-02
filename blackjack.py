@@ -28,6 +28,11 @@ CARDS_PER_DECK = 52
 MAX_RESPLIT = 4
 MAX_TABLE_SPOTS = 7
 DEALER_HITS_SOFT_17 = False
+NUMBER_SHOES_IN_SIMULATION = 1000
+TEN_CARDS = (10, 11, 12, 13)
+STIFF_TOTALS = (12, 13, 14, 15, 16)
+DEFAULT_BET = 100
+DEFAULT_STAKE = 100000
 
 
 class CardValue(Enum):
@@ -228,11 +233,13 @@ class Hand:
         """
         whether a hand is soft or not
         """
-        tens = (10, 11, 12, 13)
         return (
             any(map(lambda x: x.is_ace(), self.cards))
             and sum(
-                [c.value.value if c.value.value not in tens else 10 for c in self.cards]
+                [
+                    c.value.value if c.value.value not in TEN_CARDS else 10
+                    for c in self.cards
+                ]
             )
             <= 11
         )
@@ -241,10 +248,12 @@ class Hand:
         """
         whether the hand is above 21 with every ace counted low
         """
-        tens = (10, 11, 12, 13)
         return (
             sum(
-                [c.value.value if c.value.value not in tens else 10 for c in self.cards]
+                [
+                    c.value.value if c.value.value not in TEN_CARDS else 10
+                    for c in self.cards
+                ]
             )
             > 21
         )
@@ -264,7 +273,7 @@ class Hand:
         # get initial value with aces counted low
         value = sum(
             [
-                c.value.value if c.value.value not in (10, 11, 12, 13) else 10
+                c.value.value if c.value.value not in TEN_CARDS else 10
                 for c in self.cards
             ]
         )
@@ -349,7 +358,7 @@ class Player:
     """
 
     def __init__(
-        self, name, money=10000, strategy=PlayerStrategy.RANDOM, takes_insurance=False
+        self, name, money=DEFAULT_STAKE, strategy=PlayerStrategy.RANDOM, takes_insurance=False
     ):
         """
         constructs a player
@@ -369,7 +378,7 @@ class Player:
         """
         get the amount the player wants to bet
         """
-        return 100
+        return DEFAULT_BET
 
     def lose(self, amt):
         """
@@ -536,7 +545,7 @@ class Player:
                 CardValue.SIX,
             ):
                 return True
-        if player_hand.get_sum() in (13, 14, 15, 16):
+        if player_hand.get_sum() in STIFF_TOTALS:
             if dealer_card.value not in (
                 CardValue.TWO,
                 CardValue.THREE,
@@ -730,7 +739,11 @@ class Game:
             for spot in self.spots:
                 if not spot.hands[0].is_bj():
                     spot.player.lose(spot.hands[0].bet)
-                    logger.info("player %s loses %d", spot.player, spot.hands[0].bet)
+                    logger.info(
+                        "player %s loses %d",
+                        spot.player,
+                        spot.hands[0].bet,
+                    )
                 spot.hands = []
             return
 
@@ -781,17 +794,20 @@ class Game:
         while not self.shoe.cut_card_out:
             logger.info("dealing round %d", round_number)
             self.process_round()
-
             for player in self.players:
                 logger.info(
-                    "player %s has %d after round %d", player, player.money, round_number
+                    "player %s has %d after round %d",
+                    player,
+                    player.money,
+                    round_number,
                 )
             round_number += 1
 
 
-# create two players
+# start simulation
 logger.info("starting simulation")
 
+# create two players
 john = Player("John", strategy=PlayerStrategy.RANDOM, takes_insurance=True)
 logger.info(
     "player %s with strategy %s and takes insurance %s created",
@@ -808,8 +824,8 @@ logger.info(
     str(katy.takes_insurance),
 )
 
-# play all rounds in the shoe
-for shoe_number in range(10):
+# play specified numbr of shoes
+for shoe_number in range(NUMBER_SHOES_IN_SIMULATION):
     logger.info("starting shoe number %d", shoe_number)
     six_deck_shoe = Shoe(6)
     g = Game(six_deck_shoe, player_spot_data=[(john, 1), (katy, 3)])
