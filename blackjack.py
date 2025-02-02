@@ -291,12 +291,6 @@ class DealerHand(Hand):
     represents a dealer's hand
     """
 
-    def __init__(self, cards):
-        """
-        constructs a dealer's hand
-        """
-        super().__init__(cards)
-
     def __repr__(self):
         """
         describes a dealer hand
@@ -358,7 +352,11 @@ class Player:
     """
 
     def __init__(
-        self, name, money=DEFAULT_STAKE, strategy=PlayerStrategy.RANDOM, takes_insurance=False
+        self,
+        name,
+        money=DEFAULT_STAKE,
+        strategy=PlayerStrategy.RANDOM,
+        takes_insurance=False,
     ):
         """
         constructs a player
@@ -808,38 +806,58 @@ class Decision:
     """
     represents a blackjack decision
     """
-    def __init__(self, player_hand, dealer_card, decision, outcome):
+
+    def __init__(self, player_hand, dealer_card, value):
         self.player_hand = player_hand
         self.dealer_card = dealer_card
-        self.decision = decision
-        self.outcome = outcome
+        self.value = value
 
 
-class Q_LEARNER:
+class KnownOutcomeDecision(Decision):
+    """
+    represents a completed blackjack decision
+    """
+
+    def __init__(self, decision, did_win, number_steps):
+        super().__init__(decision.player_hand, decision.dealer_card, decision.value)
+        self.did_win = did_win
+        self.number_discount_steps = number_steps
+
+
+class QLearner:
     """
     class to hold and update decision data and default decisions for a
     q learning decision category, eg insurance, surrender, split, double,
     hit, and stand
     """
+
     def __init__(self):
-        self.decision_data = dict()
-        self.decisions = dict()
+        self.decision_data = []
+        self.decisions = {}
+        # populate with random bool values to start
 
-    def add_data(self, data):
+    @classmethod
+    def __hand_and_dealer_card_to_key(cls, hand, dealer_card):
         """
-        adds decision data tuples
-        - player cards
-        - dealer card
-        - decision
-        = outcome
-        - discount steps
-
+        returns a key for use in the decision dictionary
         """
         pass
 
+    def add_decision(self, decision):
+        """
+        adds known outcome decision
+        - player cards
+        - dealer card
+        - decision
+        - outcome
+        - discount steps
+
+        """
+        self.decision_data.append(data)
+
     def update_decisions(self):
         """
-        updates decision based on data
+        updates decisions based on decision data
         """
         pass
 
