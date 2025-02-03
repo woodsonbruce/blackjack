@@ -4,7 +4,7 @@ blackjack simulation
 - double on any pair
 """
 
-from collections import deque
+from collections import defaultdict, deque
 from enum import Enum
 import logging
 import random
@@ -832,15 +832,15 @@ class QLearner:
     """
 
     def __init__(self):
-        self.two_card_decision_data = []
+        self.three_card_decision_data = []
         self.card_sum_decision_data = []
 
-        # populate with random bool values to start
-        self.two_card_decisions = {}
-        self.card_sum_decisions = {}
+        defaultdict_callable = lambda: random.choice([True, False])
+        self.three_card_decisions = defaultdict(defaultdict_callable)
+        self.card_sum_decisions = defaultdict(defaultdict_callable)
 
     @classmethod
-    def __get_two_card_decision_key(cls, player_hand, dealer_card):
+    def __get_key(cls, player_hand, dealer_card):
         """
         returns a key for use in the decision dictionary
         """
@@ -871,19 +871,19 @@ class QLearner:
         """
         pass
 
-    def get_two_card_decision(self, player_hand, dealer_card):
+    def get_three_card_decision(self, player_hand, dealer_card):
         """
         gets the decision based on two cards
         """
-        pass
+        key = self.__get_key(player_hand, dealer_card)
+        return self.three_card_decisions[key]
 
     def get_hand_sum_decision(self, hand_sum, dealer_card):
         """
         gets the decision based on hand sum
         """
-
-    def test(self, p, d):
-        return self.__class__.__get_two_card_decision_key(p, d)
+        key = self.__get_key(player_hand, dealer_card)
+        return self.three_card_decisions[key]
 
 
 # start simulation
