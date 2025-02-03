@@ -822,64 +822,94 @@ class KnownOutcomeDecision(Decision):
 
 class QLearner:
     """
-    class to hold and update decision data and default decisions for a
-    q learning decision category, eg insurance, surrender, split, double,
-    hit, and stand
+    class to hold and update decision data and decision values
     """
 
     def __init__(self):
-        self.three_card_decision_data = []
-        self.card_sum_decision_data = []
+        self.insurance_decision_data = []
+        self.split_decision_data = []
+        self.double_decision_data = []
+        self.hit_stand_decision_data = []
 
-        defaultdict_callable = lambda: random.choice([True, False])
-        self.three_card_decisions = defaultdict(defaultdict_callable)
-        self.card_sum_decisions = defaultdict(defaultdict_callable)
+        self.insurance_decision_values = defaultdict(
+            lambda: random.choice([True, False])
+        )
+        self.split_decision_values = defaultdict(
+            lambda: random.choice([True, False])
+        )
+        self.double_decision_values = defaultdict(
+            lambda: random.choice([True, False])
+        )
+        self.hit_stand_decision_values = defaultdict(
+            lambda: random.choice([True, False])
+        )
 
     @classmethod
     def __get_key(cls, player_hand, dealer_card):
         """
         returns a key for use in the decision dictionary
         """
-        player_vals = sorted(
-            [
-                CardValue.as_char(player_hand.cards[0].value.value),
-                CardValue.as_char(player_hand.cards[1].value.value),
-            ]
-        )
+        player_vals = [CardValue.as_char(c.value.value) for c in player_hand.cards]
         dealer_val = CardValue.as_char(dealer_card.value.value)
-        return player_vals[0] + player_vals[1] + dealer_val
+        return "".join([v + "_" for v in player_vals]) + dealer_val
 
-    def add_decision(self, decision):
+    def add_insurance_decision(self, decision):
         """
-        adds known outcome decision
-        - player cards
-        - dealer card
-        - decision
-        - outcome
-        - discount steps
+        adds insurance decision
+        """
+        self.insurance_decision_data.append(decision)
 
+    def add_split_decision(self, decision):
         """
-        self.decision_data.append(data)
+        adds split decision
+        """
+        self.split_decision_data.append(decision)
 
-    def update_decisions(self):
+    def add_double_decision(self, decision):
         """
-        updates decisions based on decision data
+        adds double decision
+        """
+        self.double_decision_data.append(decision)
+
+    def add_hit_stand_decision(self, decision):
+        """
+        adds hit-stand decision
+        """
+        self.hit_stand_decision_data.append(decision)
+
+    def update_decision_values(self):
+        """
+        updates decision values on decision data
         """
         pass
 
-    def get_three_card_decision(self, player_hand, dealer_card):
+    def get_insurance_decision_value(self, player_hand, dealer_card):
         """
-        gets the decision based on two cards
+        gets the insurance decision value
         """
         key = self.__get_key(player_hand, dealer_card)
-        return self.three_card_decisions[key]
+        return self.insurance_decision_values[key]
 
-    def get_hand_sum_decision(self, hand_sum, dealer_card):
+    def get_split_decision_value(self, player_hand, dealer_card):
         """
-        gets the decision based on hand sum
+        gets the split decision value
         """
         key = self.__get_key(player_hand, dealer_card)
-        return self.three_card_decisions[key]
+        return self.split_decision_values[key]
+
+    def get_double_decision_value(self, player_hand, dealer_card):
+        """
+        gets the double decision value based on player and dealer cards
+        """
+        key = self.__get_key(player_hand, dealer_card)
+        return self.double_decision_values[key]
+
+    def get_hit_stand_decision_value(self, player_hand, dealer_card):
+        """
+        gets the hit-stand decision value based on player and dealer cards
+        """
+        key = self.__get_key(player_hand, dealer_card)
+        return self.hit_stand_decision_values[key]
 
 
 # start simulation
