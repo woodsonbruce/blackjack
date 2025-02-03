@@ -29,6 +29,7 @@ TEN_CARDS = (10, 11, 12, 13)
 STIFF_TOTALS = (12, 13, 14, 15, 16)
 DEFAULT_BET = 100
 DEFAULT_STAKE = 100000
+QLEARN_EPSILON = 0.2
 
 
 class CardValue(Enum):
@@ -834,12 +835,8 @@ class QLearner:
         self.insurance_decision_values = defaultdict(
             lambda: random.choice([True, False])
         )
-        self.split_decision_values = defaultdict(
-            lambda: random.choice([True, False])
-        )
-        self.double_decision_values = defaultdict(
-            lambda: random.choice([True, False])
-        )
+        self.split_decision_values = defaultdict(lambda: random.choice([True, False]))
+        self.double_decision_values = defaultdict(lambda: random.choice([True, False]))
         self.hit_stand_decision_values = defaultdict(
             lambda: random.choice([True, False])
         )
@@ -887,6 +884,8 @@ class QLearner:
         """
         gets the insurance decision value
         """
+        if random.random() < QLEARN_EPSILON:
+            return random.choice([True, False])
         key = self.__get_key(player_hand, dealer_card)
         return self.insurance_decision_values[key]
 
@@ -894,6 +893,8 @@ class QLearner:
         """
         gets the split decision value
         """
+        if random.random() < QLEARN_EPSILON:
+            return random.choice([True, False])
         key = self.__get_key(player_hand, dealer_card)
         return self.split_decision_values[key]
 
@@ -901,6 +902,8 @@ class QLearner:
         """
         gets the double decision value based on player and dealer cards
         """
+        if random.random() < QLEARN_EPSILON:
+            return random.choice([True, False])
         key = self.__get_key(player_hand, dealer_card)
         return self.double_decision_values[key]
 
@@ -908,6 +911,8 @@ class QLearner:
         """
         gets the hit-stand decision value based on player and dealer cards
         """
+        if random.random() < QLEARN_EPSILON:
+            return random.choice([True, False])
         key = self.__get_key(player_hand, dealer_card)
         return self.hit_stand_decision_values[key]
 
