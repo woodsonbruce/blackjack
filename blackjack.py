@@ -395,6 +395,8 @@ class Player:
             return random.choice([True, False])
         if self.strategy == PlayerStrategy.BASIC:
             return self.__splits_basic(player_hand, dealer_card)
+        if self.strategy == PlayerStrategy.Q_LEARN:
+            return q.get_split_decision_value(player_hand, dealer_card)
 
     def __splits_basic(self, player_hand, dealer_card):
         """
@@ -449,6 +451,8 @@ class Player:
             return random.choice([True, False])
         if self.strategy == PlayerStrategy.BASIC:
             return self.__doubles_basic(player_hand, dealer_card)
+        if self.strategy == PlayerStrategy.Q_LEARN:
+            return q.get_double_decision_value(player_hand, dealer_card)
 
     def __doubles_basic(self, player_hand, dealer_card):
         """
@@ -526,6 +530,8 @@ class Player:
             return random.choice([True, False])
         if self.strategy == PlayerStrategy.BASIC:
             return self.__hits_basic(player_hand, dealer_card)
+        if self.strategy == PlayerStrategy.Q_LEARN:
+            return q.get_hit_stand_decision_value(player_hand, dealer_card)
 
     def __hits_basic(self, player_hand, dealer_card):
         """
@@ -920,8 +926,11 @@ class QLearner:
 # start simulation
 logger.info("starting simulation")
 
+# create global q-lerning object
+q = QLearner()
+
 # create two players
-john = Player("John", strategy=PlayerStrategy.RANDOM, takes_insurance=True)
+john = Player("John", strategy=PlayerStrategy.Q_LEARN, takes_insurance=True)
 logger.info(
     "player %s with strategy %s and takes insurance %s created",
     john,
