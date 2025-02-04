@@ -821,9 +821,9 @@ class KnownOutcomeDecision(Decision):
     represents a completed blackjack decision
     """
 
-    def __init__(self, decision, did_win, number_steps):
+    def __init__(self, decision, result, number_steps):
         super().__init__(decision.player_hand, decision.dealer_card, decision.value)
-        self.did_win = did_win
+        self.result = result
         self.number_discount_steps = number_steps
 
 
@@ -840,12 +840,12 @@ class QLearner:
         self.double_decision_data = []
         self.hit_stand_decision_data = []
 
-        # holds averages of already processed decisions as
-        # (number true, averaged reward, number false, averaged reward)
-        self.insurance_decision_averages = defaultdict(lambda: (0, 0, 0, 0))
-        self.split_decision_averages = defaultdict(lambda: (0, 0, 0, 0))
-        self.double_decision_averages = defaultdict(lambda: (0, 0, 0, 0))
-        self.hit_stand_decision_averages = defaultdict(lambda: (0, 0, 0, 0))
+        # holds totals of already processed decisions as
+        # [number true, total reward, number false, total reward]
+        self.insurance_decision_totals = defaultdict(lambda: [0, 0, 0, 0])
+        self.split_decision_totals = defaultdict(lambda: [0, 0, 0, 0])
+        self.double_decision_totals = defaultdict(lambda: [0, 0, 0, 0])
+        self.hit_stand_decision_totals = defaultdict(lambda: [0, 0, 0, 0])
 
         # holds final decision values
         self.insurance_decision_values = defaultdict(
@@ -894,7 +894,37 @@ class QLearner:
         """
         updates decision values on decision data
         """
-        pass
+        # for every unprocessed decision
+        for decision in self.split_decision_data:
+
+            # get the key
+            key = self.__class__.__get_key(decision.player_hand, decision.dealer_card)
+
+            # update the totals
+            if decision.value:
+                self.split_decision_totals[key][0] += 1
+                self.split_decision_totals[key][1] += decision.result
+            else:
+                self.split_decision_totals[key][2] += 1
+                self.split_decision_totals[key][3] += decision.result
+
+            # if there is data for both choices, update the decision value
+            if (
+                self.split_decision_totals[key][0]
+                and self.split_decision_totals[key][2]
+            ):
+                avg_true_result = (
+                    self.split_decision_totals[key][1]
+                    / self.split_decision_totals[key][0]
+                )
+                avg_false_result = (
+                    self.split_decision_totals[key][3]
+                    / self.split_decision_totals[key][2]
+                )
+                self.split_decions_values[key] = avg_true_result > avg_false_result
+
+        # reset the decision data
+        self.split_decision_data = []
 
     def get_insurance_decision_value(self, player_hand, dealer_card):
         """
