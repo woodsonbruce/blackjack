@@ -833,11 +833,21 @@ class QLearner:
     """
 
     def __init__(self):
+
+        # holds decision objects waiting to be processed
         self.insurance_decision_data = []
         self.split_decision_data = []
         self.double_decision_data = []
         self.hit_stand_decision_data = []
 
+        # holds averages of already processed decisions as
+        # (number true, averaged reward, number false, averaged reward)
+        self.insurance_decision_averages = defaultdict(lambda: (0, 0, 0, 0))
+        self.split_decision_averages = defaultdict(lambda: (0, 0, 0, 0))
+        self.double_decision_averages = defaultdict(lambda: (0, 0, 0, 0))
+        self.hit_stand_decision_averages = defaultdict(lambda: (0, 0, 0, 0))
+
+        # holds final decision values
         self.insurance_decision_values = defaultdict(
             lambda: random.choice([True, False])
         )
