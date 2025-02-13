@@ -24,12 +24,13 @@ CARDS_PER_DECK = 52
 MAX_RESPLIT = 4
 MAX_TABLE_SPOTS = 7
 DEALER_HITS_SOFT_17 = False
-NUMBER_SHOES_IN_SIMULATION = 1000
+NUMBER_SHOES_IN_SIMULATION = 1000000
 TEN_CARDS = (10, 11, 12, 13)
 STIFF_TOTALS = (12, 13, 14, 15, 16)
 DEFAULT_BET = 100
 DEFAULT_STAKE = 100000
-QLEARN_EPSILON = 0.2
+Q_LEARN_EPSILON = 0.2
+Q_LEARN_GAMMA = 1.0
 
 
 class CardValue(Enum):
@@ -292,7 +293,7 @@ class DealerHand(Hand):
         """
         describes a dealer hand
         """
-        return f"DealererHand<hole card:{self.cards[0]}, showing:{self.cards[1]}>"
+        return "".join([c.__repr__() for c in self.cards])
 
     def dealer_hits(self):
         """
@@ -318,15 +319,15 @@ class PlayerHand(Hand):
         self.bet = bet
         self.is_doubled = False
         # self.surrender_decisions = []
-        # self.pair_decisions = []
-        # self.double_decisions = []
-        # self.hit_stand_decisions = []
+        self.pair_decisions = []
+        self.double_decisions = []
+        self.hit_stand_decisions = []
 
     def __repr__(self):
         """
         describes a player hand
         """
-        return f"PlayerHand<{self.cards}>"
+        return "".join([c.__repr__() for c in self.cards])
 
     def split(self, new_cards):
         """
@@ -341,6 +342,33 @@ class PlayerHand(Hand):
         whether a hand is a pair
         """
         return self.cards[0].value is self.cards[1].value
+
+    def process_decisions(self, did_win, q):
+        """
+        create completed decision objects and put them in the q object
+        """
+        reward = self.bet if did_win else -self.bet
+        for decision in self.pair_decisions:
+            final = EvaluatedDecision(
+                decision,
+                reward,
+                len(self.cards) - decision.size,
+            )
+            q.split_decisions.append(final)
+        for decision in self.double_decisions:
+            final = EvaluatedDecision(
+                decision,
+                reward,
+                len(self.cards) - decision.size,
+            )
+            q.double_decisions.append(final)
+        for decision in self.hit_stand_decisions:
+            final = EvaluatedDecision(
+                decision,
+                reward,
+                len(self.cards) - decision.size,
+            )
+            q.hit_stand_decisions.append(final)
 
 
 class Player:
@@ -588,7 +616,7 @@ class Game:
     represents a shoe of game play
     """
 
-    def __init__(self, shoe, player_spot_data):
+    def __init__(self, shoe, q, player_spot_data):
         """
         constructs a game
         """
@@ -602,6 +630,9 @@ class Game:
 
         # set shoe
         self.shoe = shoe
+
+        # q learning object
+        self.q = q
 
         # create spots
         self.spots = []
@@ -625,20 +656,24 @@ class Game:
         """
         index_busted = []  # some players double twelve
         for i, hand in enumerate(spot.hands):
-            if spot.player.doubles(hand, dealer_card):
+            will_double = spot.player.doubles(hand, dealer_card)
+            decision = Decision(hand, dealer_card, will_double)
+            hand.double_decisions.append(decision)
+            if will_double:
                 hand.bet = 2 * hand.bet
                 double_card = self.shoe.deal_cards(1)
                 logger.info(
                     "player %s doubles hand %s with card %s",
                     spot.player,
                     hand,
-                    double_card,
+                    double_card[0],
                 )
                 hand.cards += double_card
                 hand.is_doubled = True
             if hand.is_bust():
                 index_busted.append(i)
                 spot.player.lose(hand.bet)
+                hand.process_decisions(did_win=False, q=q)
                 logger.info("player %s busts and loses %d", spot.player, hand.bet)
         for i in sorted(index_busted, reverse=True):
             del spot.hands[i]
@@ -650,21 +685,31 @@ class Game:
         index_busted = []
         for i, hand in enumerate(spot.hands):
             if not hand.is_doubled:
-                while not hand.is_bust() and spot.player.hits(hand, dealer_card):
-                    hit_card = self.shoe.deal_cards(1)
-                    logger.info(
-                        "player %s hitting hand %s with %s", spot.player, hand, hit_card
-                    )
-                    hand.cards += hit_card
-                    if hand.is_bust():
-                        index_busted.append(i)
-                        spot.player.lose(hand.bet)
+                while not hand.is_bust():
+                    will_hit = spot.player.hits(hand, dealer_card)
+                    decision = Decision(hand, dealer_card, will_hit)
+                    hand.hit_stand_decisions.append(decision)
+                    if will_hit:
+                        hit_card = self.shoe.deal_cards(1)
                         logger.info(
-                            "player %s busts and loses %d", spot.player, hand.bet
+                            "player %s will hit hand %s wtih card %s",
+                            spot.player,
+                            hand,
+                            hit_card[0],
                         )
+                        hand.cards += hit_card
+                        if hand.is_bust():
+                            index_busted.append(i)
+                            spot.player.lose(hand.bet)
+                            hand.process_decisions(did_win=False, q=q)
+                            logger.info(
+                                "player %s busts and loses %d", spot.player, hand.bet
+                            )
+                            break
+                    else:
+                        break
                 if not hand.is_bust():
                     logger.info("player %s stands %s", spot.player, hand)
-
         for i in sorted(index_busted, reverse=True):
             del spot.hands[i]
 
@@ -672,24 +717,27 @@ class Game:
         """
         use recursion to handle splitting
         """
-        if (
-            hand.is_pair()
-            and spot.player.splits(hand, dealer_card)
-            and len(spot.hands) < MAX_RESPLIT
-        ):
-            h1, h2 = hand.split(self.shoe.deal_cards(2))
-            logger.info(
-                "player %s splits hand %s into hands %s and %s",
-                spot.player,
-                hand,
-                h1,
-                h2,
-            )
-            spot.hands.remove(hand)
-            spot.hands.append(h1)
-            spot.hands.append(h2)
-            self.__process_splitting(h1, dealer_card, spot)
-            self.__process_splitting(h2, dealer_card, spot)
+        if hand.is_pair() and len(spot.hands) < MAX_RESPLIT:
+            will_split = spot.player.splits(hand, dealer_card)
+            decision = Decision(hand, dealer_card, will_split)
+            if will_split:
+                h1, h2 = hand.split(self.shoe.deal_cards(2))
+                h1.pair_decisions.append(decision)
+                h2.pair_decisions.append(decision)
+                logger.info(
+                    "player %s splits hand %s into hands %s and %s",
+                    spot.player,
+                    hand,
+                    h1,
+                    h2,
+                )
+                spot.hands.remove(hand)
+                spot.hands.append(h1)
+                spot.hands.append(h2)
+                self.__process_splitting(h1, dealer_card, spot)
+                self.__process_splitting(h2, dealer_card, spot)
+            else:
+                hand.pair_decisions.append(decision)
 
     def __process_spot(self, spot, dealer_card):
         """
@@ -775,13 +823,18 @@ class Game:
             for spot in self.spots:
                 for hand in spot.hands:
                     spot.player.win(hand.bet)
+                    hand.process_decisions(did_win=True, q=q)
+
         else:
             for spot in self.spots:
                 for hand in spot.hands:
                     if hand.get_sum() > dealer_hand.get_sum():
                         spot.player.win(hand.bet)
+                        hand.process_decisions(did_win=True, q=q)
+
                     elif hand.get_sum() < dealer_hand.get_sum():
                         spot.player.lose(hand.bet)
+                        hand.process_decisions(did_win=False, q=q)
 
         # clear
         for spot in self.spots:
@@ -804,6 +857,16 @@ class Game:
                 )
             round_number += 1
 
+        # update q data
+        q.update_split_decision_values()
+        q.update_double_decision_values()
+        q.update_hit_stand_decision_values()
+
+        # display decision tables
+        print("---")
+        print(q.split_decision_values)
+        print(q.split_decision_totals)
+
 
 class Decision:
     """
@@ -811,18 +874,30 @@ class Decision:
     """
 
     def __init__(self, player_hand, dealer_card, value):
-        self.player_hand = player_hand
-        self.dealer_card = dealer_card
+        key = Decision.__get_key(player_hand, dealer_card)
+        self.key = key
         self.value = value
+        self.size = len(player_hand.cards)
+
+    @classmethod
+    def __get_key(cls, player_hand, dealer_card):
+        """
+        returns a key for use in the decision dictionary
+        """
+        player_vals = [CardValue.as_char(c.value.value) for c in player_hand.cards]
+        dealer_val = CardValue.as_char(dealer_card.value.value)
+        return "".join([v + "_" for v in player_vals]) + dealer_val
 
 
-class KnownOutcomeDecision(Decision):
+class EvaluatedDecision(Decision):
     """
-    represents a completed blackjack decision
+    represents a blackjack decision and the result
     """
 
     def __init__(self, decision, result, number_steps):
-        super().__init__(decision.player_hand, decision.dealer_card, decision.value)
+        self.key = decision.key
+        self.value = decision.value
+        self.size = decision.size
         self.result = result
         self.number_discount_steps = number_steps
 
@@ -835,10 +910,10 @@ class QLearner:
     def __init__(self):
 
         # holds decision objects waiting to be processed
-        self.insurance_decision_data = []
-        self.split_decision_data = []
-        self.double_decision_data = []
-        self.hit_stand_decision_data = []
+        self.insurance_decisions = []
+        self.split_decisions = []
+        self.double_decisions = []
+        self.hit_stand_decisions = []
 
         # holds totals of already processed decisions as
         # [number true, total reward, number false, total reward]
@@ -870,43 +945,47 @@ class QLearner:
         """
         adds insurance decision
         """
-        self.insurance_decision_data.append(decision)
+        self.insurance_decisions.append(decision)
 
     def add_split_decision(self, decision):
         """
         adds split decision
         """
-        self.split_decision_data.append(decision)
+        self.split_decisions.append(decision)
 
     def add_double_decision(self, decision):
         """
         adds double decision
         """
-        self.double_decision_data.append(decision)
+        self.double_decisions.append(decision)
 
     def add_hit_stand_decision(self, decision):
         """
         adds hit-stand decision
         """
-        self.hit_stand_decision_data.append(decision)
+        self.hit_stand_decisions.append(decision)
 
-    def update_decision_values(self):
+    def update_split_decision_values(self):
         """
         updates decision values on decision data
         """
-        # for every unprocessed decision
-        for decision in self.split_decision_data:
 
-            # get the key
-            key = self.__class__.__get_key(decision.player_hand, decision.dealer_card)
+        # for every unprocessed decision
+        for decision in self.split_decisions:
+
+            key = decision.key
 
             # update the totals
             if decision.value:
                 self.split_decision_totals[key][0] += 1
-                self.split_decision_totals[key][1] += decision.result
+                self.split_decision_totals[key][1] += (
+                    decision.result * Q_LEARN_GAMMA**decision.number_discount_steps
+                )
             else:
                 self.split_decision_totals[key][2] += 1
-                self.split_decision_totals[key][3] += decision.result
+                self.split_decision_totals[key][3] += (
+                    decision.result * Q_LEARN_GAMMA**decision.number_discount_steps
+                )
 
             # if there is data for both choices, update the decision value
             if (
@@ -921,45 +1000,134 @@ class QLearner:
                     self.split_decision_totals[key][3]
                     / self.split_decision_totals[key][2]
                 )
-                self.split_decions_values[key] = avg_true_result > avg_false_result
+                new_val = avg_true_result > avg_false_result
+                old_val = self.split_decision_values[key]
+                if new_val != old_val:
+                    self.split_decision_values[key] = new_val
 
         # reset the decision data
-        self.split_decision_data = []
+        self.split_decisions = []
+
+    def update_double_decision_values(self):
+        """
+        updates decision values on decision data
+        """
+
+        # for every unprocessed decision
+        for decision in self.double_decisions:
+
+            key = decision.key
+
+            # update the totals
+            if decision.value:
+                self.double_decision_totals[key][0] += 1
+                self.double_decision_totals[key][1] += (
+                    decision.result * Q_LEARN_GAMMA**decision.number_discount_steps
+                )
+            else:
+                self.double_decision_totals[key][2] += 1
+                self.double_decision_totals[key][3] += (
+                    decision.result * Q_LEARN_GAMMA**decision.number_discount_steps
+                )
+
+            # if there is data for both choices, update the decision value
+            if (
+                self.double_decision_totals[key][0]
+                and self.double_decision_totals[key][2]
+            ):
+                avg_true_result = (
+                    self.double_decision_totals[key][1]
+                    / self.double_decision_totals[key][0]
+                )
+                avg_false_result = (
+                    self.double_decision_totals[key][3]
+                    / self.double_decision_totals[key][2]
+                )
+                new_val = avg_true_result > avg_false_result
+                old_val = self.double_decision_values[key]
+                if new_val != old_val:
+                    self.double_decision_values[key] = new_val
+
+        # reset the decision data
+        self.double_decisions = []
+
+    def update_hit_stand_decision_values(self):
+        """
+        updates decision values on decision data
+        """
+
+        # for every unprocessed decision
+        for decision in self.hit_stand_decisions:
+
+            key = decision.key
+
+            # update the totals
+            if decision.value:
+                self.hit_stand_decision_totals[key][0] += 1
+                self.hit_stand_decision_totals[key][1] += (
+                    decision.result * Q_LEARN_GAMMA**decision.number_discount_steps
+                )
+            else:
+                self.hit_stand_decision_totals[key][2] += 1
+                self.hit_stand_decision_totals[key][3] += (
+                    decision.result * Q_LEARN_GAMMA**decision.number_discount_steps
+                )
+
+            # if there is data for both choices, update the decision value
+            if (
+                self.hit_stand_decision_totals[key][0]
+                and self.hit_stand_decision_totals[key][2]
+            ):
+                avg_true_result = (
+                    self.hit_stand_decision_totals[key][1]
+                    / self.hit_stand_decision_totals[key][0]
+                )
+                avg_false_result = (
+                    self.hit_stand_decision_totals[key][3]
+                    / self.hit_stand_decision_totals[key][2]
+                )
+                new_val = avg_true_result > avg_false_result
+                old_val = self.hit_stand_decision_values[key]
+                if new_val != old_val:
+                    self.hit_stand_decision_values[key] = new_val
+
+        # reset the decision data
+        self.hit_stand_decisions = []
 
     def get_insurance_decision_value(self, player_hand, dealer_card):
         """
         gets the insurance decision value
         """
-        if random.random() < QLEARN_EPSILON:
+        if random.random() < Q_LEARN_EPSILON:
             return random.choice([True, False])
-        key = self.__get_key(player_hand, dealer_card)
+        key = QLearner.__get_key(player_hand, dealer_card)
         return self.insurance_decision_values[key]
 
     def get_split_decision_value(self, player_hand, dealer_card):
         """
         gets the split decision value
         """
-        if random.random() < QLEARN_EPSILON:
+        if random.random() < Q_LEARN_EPSILON:
             return random.choice([True, False])
-        key = self.__get_key(player_hand, dealer_card)
+        key = QLearner.__get_key(player_hand, dealer_card)
         return self.split_decision_values[key]
 
     def get_double_decision_value(self, player_hand, dealer_card):
         """
         gets the double decision value based on player and dealer cards
         """
-        if random.random() < QLEARN_EPSILON:
+        if random.random() < Q_LEARN_EPSILON:
             return random.choice([True, False])
-        key = self.__get_key(player_hand, dealer_card)
+        key = QLearner.__get_key(player_hand, dealer_card)
         return self.double_decision_values[key]
 
     def get_hit_stand_decision_value(self, player_hand, dealer_card):
         """
         gets the hit-stand decision value based on player and dealer cards
         """
-        if random.random() < QLEARN_EPSILON:
+        if random.random() < Q_LEARN_EPSILON:
             return random.choice([True, False])
-        key = self.__get_key(player_hand, dealer_card)
+        key = QLearner.__get_key(player_hand, dealer_card)
         return self.hit_stand_decision_values[key]
 
 
@@ -978,7 +1146,7 @@ logger.info(
     str(john.takes_insurance),
 )
 
-katy = Player("Katy", strategy=PlayerStrategy.BASIC, takes_insurance=False)
+katy = Player("Katy", strategy=PlayerStrategy.Q_LEARN, takes_insurance=False)
 logger.info(
     "player %s with strategy %s and takes insurance %s created",
     katy,
@@ -990,7 +1158,7 @@ logger.info(
 for shoe_number in range(NUMBER_SHOES_IN_SIMULATION):
     logger.info("starting shoe number %d", shoe_number)
     six_deck_shoe = Shoe(6)
-    g = Game(six_deck_shoe, player_spot_data=[(john, 1), (katy, 3)])
+    g = Game(six_deck_shoe, q, player_spot_data=[(john, 1), (katy, 3)])
     g.play_entire_shoe()
 
 logger.info("ending simulation")
